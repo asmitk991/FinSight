@@ -1,19 +1,17 @@
 FROM python:3.11-slim
 
-# Install system dependencies for PaddleOCR and PyMuPDF
+# Install system dependencies for PyMuPDF (lighter)
 RUN apt-get update && apt-get install -y \
     build-essential \
-    libgl1 \
     libglib2.0-0 \
-    python3-dev \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy requirements and install
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements and install (Light Version)
+COPY requirements-light.txt .
+RUN pip install --no-cache-dir -r requirements-light.txt
 
 # Copy the application code
 COPY . .
