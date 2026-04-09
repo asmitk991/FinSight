@@ -1,11 +1,5 @@
 services:
-  # 1. Redis
-  - type: redis
-    name: finsight-redis
-    plan: free
-    ipAllowList: []
-
-  # 2. Backend
+  # 1. Backend + Celery (Combined for Free Tier)
   - type: web
     name: finsight-backend
     env: docker
@@ -14,33 +8,13 @@ services:
     plan: free
     envVars:
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: finsight-redis
-          property: connectionString
+        sync: false # Get this from Upstash.com (Free)
       - key: GEMINI_API_KEY
         sync: false
       - key: DATABASE_URL
         value: sqlite:///app/data/finance.db
 
-  # 3. Celery Worker
-  - type: worker
-    name: finsight-worker
-    env: docker
-    dockerContext: ./backend
-    dockerfilePath: Dockerfile
-    plan: starter 
-    dockerCommand: celery -A app.tasks worker --loglevel=info
-    envVars:
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: finsight-redis
-          property: connectionString
-      - key: GEMINI_API_KEY
-        sync: false
-
-  # 4. Frontend
+  # 2. Frontend
   - type: web
     name: finsight-frontend
     env: docker
