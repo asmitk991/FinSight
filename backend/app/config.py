@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     eur_to_inr: float = 106.53
     gbp_to_inr: float = 123.48
     skip_heavy_models: bool = False
-    cors_origins: list[str] = ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origins: list[str] = ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173","https://finsight-frontend-qe95.onrender.com"]
 
     model_config = SettingsConfigDict(
         env_file=".env",
