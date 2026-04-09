@@ -14,7 +14,9 @@ services:
     plan: free
     envVars:
       - key: REDIS_URL
-        fromRedis: finsight-redis
+        fromRedis:
+          name: finsight-redis
+          property: connectionString
       - key: GEMINI_API_KEY
         sync: false
       - key: DATABASE_URL
@@ -30,7 +32,9 @@ services:
     dockerCommand: celery -A app.tasks worker --loglevel=info
     envVars:
       - key: REDIS_URL
-        fromRedis: finsight-redis
+        fromRedis:
+          name: finsight-redis
+          property: connectionString
       - key: GEMINI_API_KEY
         sync: false
 
