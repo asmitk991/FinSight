@@ -10,7 +10,7 @@ services:
     name: finsight-backend
     env: docker
     dockerContext: ./backend
-    dockerfile: Dockerfile
+    dockerfilePath: Dockerfile
     plan: free
     envVars:
       - key: REDIS_URL
@@ -25,8 +25,8 @@ services:
     name: finsight-worker
     env: docker
     dockerContext: ./backend
-    dockerfile: Dockerfile
-    plan: starter # Render 'worker' types usually require a paid plan. 
+    dockerfilePath: Dockerfile
+    plan: starter 
     dockerCommand: celery -A app.tasks worker --loglevel=info
     envVars:
       - key: REDIS_URL
@@ -39,7 +39,7 @@ services:
     name: finsight-frontend
     env: docker
     dockerContext: ./frontend
-    dockerfile: Dockerfile
+    dockerfilePath: Dockerfile
     plan: free
     envVars:
       - key: VITE_API_URL
