@@ -85,20 +85,31 @@ class OCRLine:
 
 class ReceiptPipeline:
     def __init__(self) -> None:
-        settings = get_settings()
-        self.ocr = PaddleOCR(use_angle_cls=True, lang="en") if PaddleOCR else None
-        self.layoutlm_model_name = getattr(settings, "layoutlm_model_name", None)
+        self.settings = get_settings()
+        self.ocr = None
         self.processor = None
         self.model = None
-        if self.layoutlm_model_name and AutoProcessor and AutoModelForTokenClassification:
-            try:
-                self.processor = AutoProcessor.from_pretrained(self.layoutlm_model_name)
-                self.model = AutoModelForTokenClassification.from_pretrained(self.layoutlm_model_name)
-            except Exception:  # pragma: no cover
-                self.processor = None
-                self.model = None
         self.merchant_resolver = MerchantResolver()
         self.llm = LlmService()
+        self.skip_heavy = getattr(self.settings, "skip_heavy_models", False)
+
+    def _ensure_ocr(self):
+        if self.ocr is None and not self.skip_heavy and PaddleOCR:
+            try:
+                self.ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+            except Exception:
+                self.ocr = None
+
+    def _ensure_layoutlm(self):
+        if not self.skip_heavy and self.processor is None and AutoProcessor and AutoModelForTokenClassification:
+            model_name = getattr(self.settings, "layoutlm_model_name", None)
+            if model_name:
+                try:
+                    self.processor = AutoProcessor.from_pretrained(model_name)
+                    self.model = AutoModelForTokenClassification.from_pretrained(model_name)
+                except Exception:
+                    self.processor = None
+                    self.model = None
 
     def parse_receipt(self, image_path: str) -> ReceiptExtraction:
         image = Path(image_path)
@@ -207,6 +218,7 @@ class ReceiptPipeline:
         }
 
     def _extract_ocr_words(self, image_path: Path) -> list[OCRWord]:
+        self._ensure_ocr()
         if not self.ocr:
             fallback = image_path.stem.replace("_", " ").title()
             return [OCRWord(text=fallback, box=[0, 0, 1000, 80], score=0.0)]
@@ -371,6 +383,7 @@ class ReceiptPipeline:
         return name, round(amount, 2)
 
     def _layoutlm_extract(self, words: list[OCRWord]) -> dict:
+        self._ensure_layoutlm()
         if not self.processor or not self.model or not words:
             return {}
 

@@ -13,6 +13,8 @@ services:
         sync: false
       - key: DATABASE_URL
         value: sqlite:///app/data/finance.db
+      - key: SKIP_HEAVY_MODELS
+        value: "true"
 
   # 2. Frontend
   - type: web

@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     aed_to_inr: float = 25.10
     eur_to_inr: float = 106.53
     gbp_to_inr: float = 123.48
+    skip_heavy_models: bool = False
     cors_origins: list[str] = ["http://localhost", "http://localhost:5173", "http://127.0.0.1:5173"]
 
     model_config = SettingsConfigDict(
