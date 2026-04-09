@@ -1,0 +1,236 @@
+{
+  "profiles": {
+    "irctc": {
+      "canonical_name": "IRCTC",
+      "category": "transport",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "uberindiasystemsprivatelimited": {
+      "canonical_name": "Uber India Systems Private Limited",
+      "category": "transport",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "ola": {
+      "canonical_name": "Ola",
+      "category": "transport",
+      "merchant_type": "business",
+      "confidence": 0.98,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "rapido": {
+      "canonical_name": "Rapido",
+      "category": "transport",
+      "merchant_type": "business",
+      "confidence": 0.98,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "metro": {
+      "canonical_name": "Metro",
+      "category": "transport",
+      "merchant_type": "business",
+      "confidence": 0.92,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "zomato": {
+      "canonical_name": "Zomato",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "swiggy": {
+      "canonical_name": "Swiggy",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "coffeedaygloballimited": {
+      "canonical_name": "Coffee Day Global Limited",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.98,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "chaiadda": {
+      "canonical_name": "Chai Adda",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.96,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "blinkit": {
+      "canonical_name": "Blinkit",
+      "category": "groceries",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "zepto": {
+      "canonical_name": "Zepto",
+      "category": "groceries",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "bigbasket": {
+      "canonical_name": "BigBasket",
+      "category": "groceries",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "airtelprepaid": {
+      "canonical_name": "Airtel Prepaid",
+      "category": "utilities",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "airtel": {
+      "canonical_name": "Airtel",
+      "category": "utilities",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "jio": {
+      "canonical_name": "Jio",
+      "category": "utilities",
+      "merchant_type": "business",
+      "confidence": 0.98,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "bescom": {
+      "canonical_name": "BESCOM",
+      "category": "utilities",
+      "merchant_type": "business",
+      "confidence": 0.98,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "netflix": {
+      "canonical_name": "Netflix",
+      "category": "entertainment",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "spotifyindia": {
+      "canonical_name": "Spotify India",
+      "category": "entertainment",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "spotify": {
+      "canonical_name": "Spotify",
+      "category": "entertainment",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "linkedin": {
+      "canonical_name": "LinkedIn",
+      "category": "professional",
+      "merchant_type": "business",
+      "confidence": 0.92,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "amazon": {
+      "canonical_name": "Amazon",
+      "category": "shopping",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "flipkart": {
+      "canonical_name": "Flipkart",
+      "category": "shopping",
+      "merchant_type": "business",
+      "confidence": 0.99,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "googlepayrewards": {
+      "canonical_name": "Google Pay Rewards",
+      "category": "other",
+      "merchant_type": "reward",
+      "confidence": 0.95,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "apollo": {
+      "canonical_name": "Apollo",
+      "category": "health",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "pharmeasy": {
+      "canonical_name": "PharmEasy",
+      "category": "health",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": null
+    },
+    "gograb": {
+      "canonical_name": "GoGrab",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": "GoGrab is an automated vending machine network operator found in offices, colleges, and public spaces across India. They sell snacks, beverages, and daily essentials through smart vending kiosks."
+    },
+    "go grab": {
+      "canonical_name": "GoGrab",
+      "category": "food",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": "GoGrab is an automated vending machine network operator found in offices, colleges, and public spaces across India."
+    },
+    "jioprepaid": {
+      "canonical_name": "Jio Prepaid",
+      "category": "utilities",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": "Jio is a leading Indian telecommunications operator offering mobile and broadband services."
+    },
+    "snapmint": {
+      "canonical_name": "Snapmint",
+      "category": "shopping",
+      "merchant_type": "business",
+      "confidence": 0.97,
+      "source": "base_profile",
+      "search_summary": "Snapmint is a buy-now-pay-later (BNPL) platform for consumer electronics and fashion."
+    }
+  }
+}
