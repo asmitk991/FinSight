@@ -4,11 +4,11 @@ services:
     name: finsight-backend
     env: docker
     dockerContext: ./backend
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/Dockerfile
     plan: free
     envVars:
       - key: REDIS_URL
-        sync: false # Get this from Upstash.com (Free)
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: DATABASE_URL
@@ -19,7 +19,7 @@ services:
     name: finsight-frontend
     env: docker
     dockerContext: ./frontend
-    dockerfilePath: Dockerfile
+    dockerfilePath: frontend/Dockerfile
     plan: free
     envVars:
       - key: VITE_API_URL
