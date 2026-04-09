@@ -1,54 +1,46 @@
 services:
-  # 1. Redis for Celery
+  # 1. Redis
   - type: redis
     name: finsight-redis
-    ipAllowList: [] # Only allow internal connections
     plan: free
+    ipAllowList: []
 
-  # 2. Backend FastAPI
+  # 2. Backend
   - type: web
     name: finsight-backend
     env: docker
     dockerContext: ./backend
     dockerfile: Dockerfile
-    plan: starter
+    plan: free
     envVars:
       - key: REDIS_URL
         fromRedis: finsight-redis
       - key: GEMINI_API_KEY
-        sync: false # Set this in Render dashboard
+        sync: false
       - key: DATABASE_URL
         value: sqlite:///app/data/finance.db
-    volumes:
-      - name: finsight-data
-        mountPath: /app/data
-        sizeGB: 1
 
-  # 3. Celery Worker (Uses same Docker Image)
+  # 3. Celery Worker
   - type: worker
     name: finsight-worker
     env: docker
     dockerContext: ./backend
     dockerfile: Dockerfile
-    plan: starter
+    plan: starter # Render 'worker' types usually require a paid plan. 
     dockerCommand: celery -A app.tasks worker --loglevel=info
     envVars:
       - key: REDIS_URL
         fromRedis: finsight-redis
       - key: GEMINI_API_KEY
         sync: false
-    volumes:
-      - name: finsight-data
-        mountPath: /app/data
-        sizeGB: 1
 
-  # 4. Frontend (Nginx)
+  # 4. Frontend
   - type: web
     name: finsight-frontend
     env: docker
     dockerContext: ./frontend
     dockerfile: Dockerfile
-    plan: starter
+    plan: free
     envVars:
       - key: VITE_API_URL
-        value: https://finsight-backend.onrender.com/api # Change this to your actual backend URL
+        value: https://finsight-backend.onrender.com/api
