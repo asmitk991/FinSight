@@ -9,9 +9,9 @@ from app.config import get_settings
 from app.models.schemas import TransactionRecord
 
 try:
-    from sentence_transformers import SentenceTransformer
-except ImportError:  # pragma: no cover
-    SentenceTransformer = None
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+except ImportError:
+    GoogleGenerativeAIEmbeddings = None
 
 
 class VectorStore:
@@ -22,15 +22,27 @@ class VectorStore:
             settings=ChromaSettings(anonymized_telemetry=False),
         )
         self.collection = self.client.get_or_create_collection(name=settings.chroma_collection)
-        self.model = SentenceTransformer(settings.embedding_model_name) if SentenceTransformer else None
+        
+        self.embedding_function = None
+        if GoogleGenerativeAIEmbeddings and settings.gemini_api_key:
+            try:
+                self.embedding_function = GoogleGenerativeAIEmbeddings(
+                    model="models/embedding-001",
+                    google_api_key=settings.gemini_api_key
+                )
+            except Exception:
+                self.embedding_function = None
 
-    def embed(self, texts: list[str]) -> list[list[float]] | None:
-        if not self.model:
+    def embed_texts(self, texts: list[str]) -> list[list[float]] | None:
+        if not self.embedding_function:
             return None
-        return self.model.encode(texts).tolist()
+        try:
+            return self.embedding_function.embed_documents(texts)
+        except Exception:
+            return None
 
     def upsert_transactions(self, transactions: list[TransactionRecord]) -> None:
-        embeddings = self.embed([tx.embedding_text for tx in transactions])
+        embeddings = self.embed_texts([tx.embedding_text for tx in transactions])
         self.collection.upsert(
             ids=[tx.id for tx in transactions],
             documents=[tx.embedding_text for tx in transactions],
@@ -69,8 +81,13 @@ class VectorStore:
         top_k: int = 8,
         metadata_filter: dict[str, Any] | None = None,
     ) -> list[str]:
+        # If we have a custom embedding function, we must use it to embed the query manually
+        # as Chroma's default internal function might not match.
+        query_embeddings = self.embed_texts([query_text])
+        
         result = self.collection.query(
-            query_texts=[query_text],
+            query_embeddings=query_embeddings,
+            query_texts=[query_text] if not query_embeddings else None,
             n_results=top_k,
             where=metadata_filter or None,
         )
