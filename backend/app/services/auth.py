@@ -9,27 +9,27 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     settings = get_settings()
     token = credentials.credentials
     
+    # If no secret is configured (local dev), use a valid Nil UUID
     if not settings.supabase_jwt_secret:
-        # Fallback for development if secret is not set
-        # In production, this should always be set
-        return "dev-user"
+        return "00000000-0000-0000-0000-000000000000"
 
     try:
+        # Supabase uses HS256 for its symmetric JWT secret
         payload = jwt.decode(
             token, 
             settings.supabase_jwt_secret, 
             algorithms=["HS256"], 
             options={"verify_aud": False}
         )
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        user_id = payload.get("sub")
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
+                detail="User ID (sub) missing from token",
             )
-        return user_id
-    except JWTError:
+        return str(user_id)
+    except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=f"Token validation failed: {str(e)}",
         )
