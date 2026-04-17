@@ -1,74 +1,80 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import {
-  BarChart,
-  Bar,
-  Cell,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  BarChart, Bar, Cell, LineChart, Line,
+  PieChart, Pie, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
-  askAgent,
-  clearTransactions,
-  confirmPdf,
-  deleteTransaction,
-  fetchReport,
-  fetchTransactions,
-  generateExecutiveReport,
-  pollImageJob,
-  uploadImages,
-  uploadPdf,
+  askAgent, clearTransactions, confirmPdf, deleteTransaction,
+  fetchReport, fetchTransactions, generateExecutiveReport,
+  pollImageJob, uploadImages, uploadPdf,
 } from "./lib/api";
 
-const COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#f3f4f6", "#0ea5e9", "#ef4444"];
+const PALETTE = ["#6366f1","#22c55e","#f59e0b","#f43f5e","#0ea5e9","#a855f7","#14b8a6","#fb923c"];
 
+/* ─── Helpers ──────────────────────────────────────────────── */
+function fmt(amount, currency = "INR") {
+  const sym = { INR: "₹", USD: "$", AED: "AED ", EUR: "€", GBP: "£" };
+  return `${sym[currency] ?? currency}${Number(amount).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function initials(email = "") { return email[0]?.toUpperCase() ?? "U"; }
+
+function ttStyle() {
+  return {
+    background: "#2a2f3a",
+    border: "1px solid rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "8px 12px",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+  };
+}
+
+
+/* ─── Auth Screen ──────────────────────────────────────────── */
 function Auth() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
 
-  const handleAuth = async (isSignUp) => {
-    setLoading(true);
-    setError(null);
-    const { error } = isSignUp 
+  const go = async (isSignUp) => {
+    setLoading(true); setError(null);
+    const { error: err } = isSignUp
       ? await supabase.auth.signUp({ email, password })
       : await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) setError(error.message);
+    if (err) setError(err.message);
     setLoading(false);
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>FinSight</h1>
-        <p>Your AI-powered personal finance assistant.</p>
-        {error && <div className="error-text">{error}</div>}
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-        />
+    <div className="auth-page">
+      <div className="auth-card fadein">
+        <div className="auth-logo">
+          <div className="auth-logo-mark">F</div>
+          <span className="auth-logo-text">FinSight</span>
+        </div>
+        <h1 className="auth-heading">Welcome back</h1>
+        <p className="auth-sub">Sign in to your financial dashboard or create a new account.</p>
+        {error && <div className="auth-err">{error}</div>}
+        <div className="auth-field">
+          <label>Email</label>
+          <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="auth-field">
+          <label>Password</label>
+          <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && go(false)} />
+        </div>
         <div className="auth-buttons">
-          <button onClick={() => handleAuth(false)} disabled={loading}>
-            {loading ? "..." : "Sign In"}
+          <button className="btn btn-primary" onClick={() => go(false)} disabled={loading}>
+            {loading ? "Signing in…" : "Sign in"}
           </button>
-          <button className="ghost-button" onClick={() => handleAuth(true)} disabled={loading}>
-            Sign Up
+          <button className="btn btn-ghost" onClick={() => go(true)} disabled={loading}>
+            Create account
           </button>
         </div>
       </div>
@@ -76,648 +82,100 @@ function Auth() {
   );
 }
 
-function getChartAxisColor(theme) {
-  return theme === "light" ? "#0f172a" : "#e5e7eb";
-}
+/* ─── Sidebar Nav ──────────────────────────────────────────── */
+const NAV = [
+  { id: "dashboard", icon: "⬡", label: "Dashboard" },
+  { id: "upload",    icon: "↑", label: "Upload" },
+  { id: "chat",      icon: "✦", label: "Ask AI" },
+  { id: "report",    icon: "▤", label: "Report" },
+];
 
-function getChartGridColor(theme) {
-  return theme === "light" ? "rgba(51, 65, 85, 0.22)" : "rgba(148, 163, 184, 0.24)";
-}
-
-function getChartTooltipStyle(theme) {
-  if (theme === "light") {
-    return {
-      backgroundColor: "#ffffff",
-      border: "1px solid rgba(15, 23, 42, 0.14)",
-      color: "#0f172a",
-      borderRadius: "14px",
-      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.16)",
-    };
-  }
-  return {
-    backgroundColor: "#f8fafc",
-    border: "1px solid rgba(15, 23, 42, 0.14)",
-    color: "#0f172a",
-    borderRadius: "14px",
-    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.2)",
-  };
-}
-
-function getChartTooltipLabelStyle(theme) {
-  return {
-    color: theme === "light" ? "#0f172a" : "#111827",
-    fontWeight: 600,
-  };
-}
-
-function getChartTooltipItemStyle(theme) {
-  return {
-    color: theme === "light" ? "#0f172a" : "#111827",
-  };
-}
-
-function formatAmount(amount, currency = "INR") {
-  const symbolMap = {
-    INR: "INR",
-    USD: "$",
-    AED: "AED",
-    EUR: "EUR",
-    GBP: "GBP",
-  };
-  const symbol = symbolMap[currency] || currency;
-  if (symbol === "$") return `$ ${amount.toFixed(2)}`;
-  return `${symbol} ${amount.toFixed(2)}`;
-}
-
-function App() {
-  const [session, setSession] = useState(null);
-  const [theme, setTheme] = useState("dark");
-  const [preview, setPreview] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [question, setQuestion] = useState("");
-  const [agentReply, setAgentReply] = useState(null);
-  const [report, setReport] = useState(null);
-  const [imageJob, setImageJob] = useState(null);
-  const [selectedPdf, setSelectedPdf] = useState(null);
-  const [uploadMessage, setUploadMessage] = useState("");
-  const [uploadError, setUploadError] = useState("");
-  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
-  const [isSavingPreview, setIsSavingPreview] = useState(false);
-  const [isAskingAgent, setIsAskingAgent] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
-  const [isUploadingImages, setIsUploadingImages] = useState(false);
-  const [activeChart, setActiveChart] = useState(null);
-  const [agentError, setAgentError] = useState("");
-  const [isClearingAll, setIsClearingAll] = useState(false);
-  const [showAllStoredTransactions, setShowAllStoredTransactions] = useState(false);
-  const [execReport, setExecReport] = useState(null);
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [reportError, setReportError] = useState("");
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      // Clear ALL state when user signs out to prevent data leaking to next user
-      if (!session) {
-        setTransactions([]);
-        setReport(null);
-        setExecReport(null);
-        setAgentReply(null);
-        setPreview(null);
-        setImageJob(null);
-        setUploadMessage("");
-        setUploadError("");
-        setAgentError("");
-        setReportError("");
-        setQuestion("");
-        setSelectedPdf(null);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (session) {
-      refreshDashboard();
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [session, theme]);
-
-  if (!session) return <Auth />;
-
-  function toggleTheme() {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
-  }
-
-  async function loadTransactions() {
-    const data = await fetchTransactions();
-    setTransactions(data);
-    return data;
-  }
-
-  async function refreshDashboard() {
-    const data = await loadTransactions();
-    if (!data.length) {
-      setReport(null);
-      return;
-    }
-    const dates = data.map((tx) => new Date(tx.date));
-    const minDate = new Date(Math.min(...dates));
-    const maxDate = new Date(Math.max(...dates));
-    const start = minDate.toISOString().slice(0, 10);
-    const end = maxDate.toISOString().slice(0, 10);
-    fetchReport(start, end).then(setReport).catch(() => setReport(null));
-  }
-
-  function handlePdfSelect(event) {
-    const file = event.target.files?.[0];
-    setSelectedPdf(file || null);
-    setUploadError("");
-    setUploadMessage(file ? `Selected PDF: ${file.name}` : "");
-  }
-
-  async function handlePdfUpload() {
-    if (!selectedPdf) {
-      setUploadError("Choose a PDF first.");
-      return;
-    }
-    try {
-      setIsUploadingPdf(true);
-      setUploadError("");
-      setUploadMessage(`Uploading ${selectedPdf.name} and extracting transactions...`);
-      const data = await uploadPdf(selectedPdf);
-      setPreview(data);
-      setUploadMessage(`Parsed ${data.transactions.length} transactions from ${selectedPdf.name}.`);
-    } catch (error) {
-      const detail = error?.response?.data?.detail;
-      setUploadError(typeof detail === "string" ? detail : "Extraction failed. Ensure your PDF contains valid transaction history and try again.");
-      setPreview(null);
-    } finally {
-      setIsUploadingPdf(false);
-    }
-  }
-
-  async function handleImageUpload(event) {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-    try {
-      setUploadError("");
-      setIsUploadingImages(true);
-      setUploadMessage(`Queued ${files.length} receipt image(s) for processing.`);
-      const job = await uploadImages(files);
-      setImageJob(job);
-      const interval = setInterval(async () => {
-        const updated = await pollImageJob(job.job_id);
-        setImageJob(updated);
-        if (updated.status === "completed" || updated.status === "failed") {
-          clearInterval(interval);
-          refreshDashboard();
-          setIsUploadingImages(false);
-        }
-      }, 2000);
-    } catch (error) {
-      const detail = error?.response?.data?.detail;
-      setUploadError(typeof detail === "string" ? detail : "Image processing failed. Please try again later.");
-      setIsUploadingImages(false);
-    }
-  }
-
-  async function savePreview() {
-    try {
-      setIsSavingPreview(true);
-      await confirmPdf(preview.preview_id, preview.transactions.map((tx) => tx.id));
-      setPreview(null);
-      await refreshDashboard();
-    } finally {
-      setIsSavingPreview(false);
-    }
-  }
-
-  async function handleAskAgent() {
-    if (!question.trim()) return;
-    try {
-      setIsAskingAgent(true);
-      setAgentError("");
-      const data = await askAgent(question);
-      setAgentReply(data);
-    } catch (error) {
-      const detail = error?.response?.data?.detail;
-      setAgentError(typeof detail === "string" ? detail : "Agent query failed. Please try again.");
-    } finally {
-      setIsAskingAgent(false);
-    }
-  }
-
-  async function handleDelete(id) {
-    try {
-      setDeletingId(id);
-      await deleteTransaction(id);
-      await refreshDashboard();
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  async function handleClearAll() {
-    try {
-      setIsClearingAll(true);
-      setUploadError("");
-      setAgentError("");
-      await clearTransactions();
-      setPreview(null);
-      setAgentReply(null);
-      setReport(null);
-      setShowAllStoredTransactions(false);
-      setUploadMessage("Cleared all saved transactions and chart data.");
-      await refreshDashboard();
-    } finally {
-      setIsClearingAll(false);
-    }
-  }
-
-  async function handleGenerateReport() {
-    try {
-      setIsGeneratingReport(true);
-      setReportError("");
-      setExecReport(null);
-      const data = await generateExecutiveReport();
-      setExecReport(data);
-    } catch (error) {
-      const detail = error?.response?.data?.detail;
-      setReportError(typeof detail === "string" ? detail : "Report generation failed. Please try again.");
-    } finally {
-      setIsGeneratingReport(false);
-    }
-  }
-
-  function removePreviewRow(id) {
-    setPreview((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        transactions: current.transactions.filter((tx) => tx.id !== id),
-      };
-    });
-  }
-
-  const fallbackCategoryTotals = transactions
-    .filter((tx) => tx.type === "debit")
-    .reduce((acc, tx) => {
-      acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
-      return acc;
-    }, {});
-  const fallbackCategoryData = Object.entries(fallbackCategoryTotals)
-    .map(([category, total]) => ({ category, total }))
-    .sort((a, b) => b.total - a.total);
-  const chartCategoryData = report?.category_breakdown?.length ? report.category_breakdown : fallbackCategoryData;
-
-  const fallbackMerchantTotals = transactions
-    .filter((tx) => tx.type === "debit")
-    .reduce((acc, tx) => {
-      acc[tx.merchant] = (acc[tx.merchant] || 0) + tx.amount;
-      return acc;
-    }, {});
-  const fallbackMerchantData = Object.entries(fallbackMerchantTotals)
-    .map(([merchant, total]) => ({ merchant, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 8);
-  const chartMerchantData = report?.top_merchants?.length ? report.top_merchants : fallbackMerchantData;
-  const reportDayTotals = transactions
-    .filter((tx) => tx.type === "debit")
-    .reduce((acc, tx) => {
-      const key = tx.date.slice(0, 10);
-      acc[key] = (acc[key] || 0) + tx.amount;
-      return acc;
-    }, {});
-  const dayTotals = Object.entries(reportDayTotals).map(([date, total]) => ({ date, total }));
-  const runningTotal = transactions
-    .filter((tx) => tx.type === "debit")
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .reduce((acc, tx) => {
-      const last = acc[acc.length - 1]?.total || 0;
-      acc.push({ date: tx.date.slice(0, 10), total: last + tx.amount });
-      return acc;
-    }, []);
-  const visibleTransactions = showAllStoredTransactions ? transactions : transactions.slice(0, 5);
-  const chartAxisColor = getChartAxisColor(theme);
-  const chartGridColor = getChartGridColor(theme);
-  const chartTooltipStyle = getChartTooltipStyle(theme);
-  const chartTooltipLabelStyle = getChartTooltipLabelStyle(theme);
-  const chartTooltipItemStyle = getChartTooltipItemStyle(theme);
-
+function Sidebar({ activeTab, setActiveTab, session, theme, toggleTheme }) {
   return (
-    <div className="app-shell">
-      <div className="theme-toggle-row">
-         <button className="ghost-button" onClick={toggleTheme}>
-            {theme === "dark" ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
-         </button>
-         <button className="ghost-button" onClick={() => supabase.auth.signOut()}>
-            🚪 Sign Out
-         </button>
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <div className="logo-mark">F</div>
+        <span className="logo-name">FinSight</span>
       </div>
-      <header className="hero">
-        <div>
-          <p className="eyebrow">FinSight</p>
-          <h1>Intelligent personal finance analysis from statements and receipts.</h1>
-          <p className="subtitle">
-            Upload UPI Statement PDFs or receipt images, review extracted data, then ask natural-language questions over your spending.
-          </p>
-        </div>
-      </header>
-
-      <section className="panel upload-panel">
-        <div>
-          <h2>Upload sources</h2>
-          <p>PDF statements return a reviewable preview. Receipt images are processed asynchronously through the OCR pipeline.</p>
-        </div>
-        <div className="upload-actions">
-          <label className="upload-card">
-            <span>Choose PDF Statement</span>
-            <input type="file" accept="application/pdf" onChange={handlePdfSelect} />
-          </label>
-          <button className={`action-button ${isUploadingPdf ? "is-busy" : ""}`} onClick={handlePdfUpload} disabled={isUploadingPdf}>
-            {isUploadingPdf ? "Uploading PDF..." : "Upload PDF"}
+      <nav className="sidebar-nav">
+        {NAV.map(n => (
+          <button key={n.id} className={`nav-item ${activeTab === n.id ? "active" : ""}`}
+            onClick={() => setActiveTab(n.id)}>
+            <span className="nav-icon">{n.icon}</span>
+            <span className="nav-label">{n.label}</span>
           </button>
-          <label className="upload-card">
-            <span>Upload Receipt Images</span>
-            <input type="file" accept="image/*" multiple onChange={handleImageUpload} />
-          </label>
-          <div className={`upload-chip ${isUploadingImages ? "is-busy" : ""}`}>{isUploadingImages ? "Processing images..." : "Images idle"}</div>
+        ))}
+      </nav>
+      <div className="sidebar-footer">
+        <button className="nav-item" onClick={toggleTheme}>
+          <span className="nav-icon">{theme === "dark" ? "☀" : "☽"}</span>
+          <span className="nav-label">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+        </button>
+        <button className="nav-item" onClick={() => supabase.auth.signOut()}>
+          <span className="nav-icon">→</span>
+          <span className="nav-label">Sign out</span>
+        </button>
+        <div className="user-chip">
+          <div className="user-avatar">{initials(session?.user?.email)}</div>
+          <span className="user-email">{session?.user?.email}</span>
         </div>
-        {uploadMessage && <p className="job-status">{uploadMessage}</p>}
-        {uploadError && <p className="error-text">{uploadError}</p>}
-        {imageJob && <p className="job-status">Image job {imageJob.id || imageJob.job_id}: {imageJob.status}</p>}
-      </section>
+      </div>
+    </aside>
+  );
+}
 
-      {preview && (
-        <section className="panel">
-          <div className="section-row">
-            <div>
-              <h2>PDF extraction preview</h2>
-              <p>Review the parsed transactions before saving them to storage and the vector index.</p>
-            </div>
-            <button className={`action-button ${isSavingPreview ? "is-busy" : ""}`} onClick={savePreview} disabled={isSavingPreview}>
-              {isSavingPreview ? "Saving..." : `Confirm ${preview.transactions.length} transactions`}
-            </button>
-          </div>
-          <TransactionTable transactions={preview.transactions} onDelete={removePreviewRow} busyId={deletingId} />
-        </section>
-      )}
+/* ─── Small reusable pieces ────────────────────────────────── */
+function StatusMsg({ msg, type = "info" }) {
+  if (!msg) return null;
+  return <div className={`status-bar ${type} fadein`}><span>●</span> {msg}</div>;
+}
 
-      <section className="chart-grid">
-        <ChartCard title="Spend by category" onExpand={() => setActiveChart("category")}>
-          {chartCategoryData.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={chartCategoryData} dataKey="total" nameKey="category" innerRadius={58} outerRadius={88}>
-                  {chartCategoryData.map((_, index) => (
-                    <Cell key={index} fill={theme === "light" ? COLORS[0] : COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChartState label="Upload and confirm transactions to see category trends." />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Top merchants" onExpand={() => setActiveChart("merchant")}>
-          {chartMerchantData.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartMerchantData} layout="vertical">
-                <XAxis type="number" hide tick={{ fill: chartAxisColor }} axisLine={{ stroke: chartGridColor }} />
-                <YAxis dataKey="merchant" type="category" width={130} tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-                <Bar dataKey="total" fill="var(--emerald-text)" radius={[0, 10, 10, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChartState label="Merchant rollups will appear after you save transactions." />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Day-wise spend" onExpand={() => setActiveChart("day")}>
-          {dayTotals.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dayTotals}>
-                <XAxis dataKey="date" hide tick={{ fill: chartAxisColor }} axisLine={{ stroke: chartGridColor }} />
-                <YAxis tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-                <Bar dataKey="total" fill="var(--emerald-text)" radius={[10, 10, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChartState label="Daily spend will show up once debit transactions exist." />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Running total" onExpand={() => setActiveChart("running")}>
-          {runningTotal.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={runningTotal}>
-                <XAxis dataKey="date" hide tick={{ fill: chartAxisColor }} axisLine={{ stroke: chartGridColor }} />
-                <YAxis tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-                <Line dataKey="total" stroke="var(--emerald-text)" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyChartState label="Running total needs saved debit transactions." />
-          )}
-        </ChartCard>
-      </section>
-
-      <section className="panel">
-        <div className="section-row">
-          <div>
-            <h2>Stored transactions</h2>
-            <p>These records back both the structured reports and the semantic retrieval flow, including peer-to-peer counterparties.</p>
-          </div>
-          <div className="button-row">
-            {transactions.length > 5 && (
-              <button className="ghost-button" onClick={() => setShowAllStoredTransactions((current) => !current)}>
-                {showAllStoredTransactions ? "Show less" : `Show all (${transactions.length})`}
-              </button>
-            )}
-            <button className={`ghost-button ${isClearingAll ? "is-busy" : ""}`} onClick={handleClearAll} disabled={isClearingAll}>
-              {isClearingAll ? "Clearing..." : "Clear all"}
-            </button>
-          </div>
-        </div>
-        <p className="table-note">
-          By default this shows the latest five saved rows. Delete is only for correcting a bad confirmed extraction, so it appears in the expanded view.
-        </p>
-        <TransactionTable
-          transactions={visibleTransactions}
-          onDelete={showAllStoredTransactions ? handleDelete : null}
-          busyId={deletingId}
-        />
-      </section>
-
-      {/* ── Executive Report Panel ── */}
-      <section className="panel exec-report-panel">
-        <div className="section-row">
-          <div>
-            <h2>Executive Financial Report</h2>
-            <p>AI-synthesized analysis of your spending patterns and recommendations.</p>
-          </div>
-          <button
-            className={`action-button ${isGeneratingReport ? "is-busy" : ""}`}
-            onClick={handleGenerateReport}
-            disabled={isGeneratingReport || transactions.length === 0}
-          >
-            {isGeneratingReport ? "Generating..." : "Generate Report"}
-          </button>
-        </div>
-
-        {reportError && <p className="error-text">{reportError}</p>}
-
-        {!execReport && !isGeneratingReport && (
-          <div className="exec-report-empty">
-            <span className="exec-report-icon">📊</span>
-            <p>Click <strong>Generate Report</strong> to get an AI-powered executive summary of all your transactions.</p>
-          </div>
-        )}
-
-        {isGeneratingReport && (
-          <div className="exec-report-empty">
-            <span className="exec-report-icon spinning">⚙️</span>
-            <p>The Editor Agent is analysing your transactions…</p>
-          </div>
-        )}
-
-        {execReport && (
-          <div className="exec-report-body">
-            {/* Header row: health score + headline */}
-            <div className="exec-report-header">
-              <div className="health-score-ring" style={{ "--score": execReport.health_score }}>
-                <div className="health-score-inner">
-                  <span className="health-score-num">{execReport.health_score}</span>
-                  <span className="health-score-label">{execReport.health_label}</span>
-                </div>
-              </div>
-              <div className="exec-report-headline-block">
-                <p className="exec-report-period">{execReport.period_label}</p>
-                <h3 className="exec-report-headline">{execReport.headline}</h3>
-                <p className="exec-report-overview">{execReport.overview}</p>
-              </div>
-            </div>
-
-            {/* KPI pills */}
-            <div className="exec-kpi-row">
-              <div className="exec-kpi">
-                <span className="exec-kpi-label">Total Spend</span>
-                <span className="exec-kpi-value">₹{execReport.total_spend?.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-              </div>
-              <div className="exec-kpi">
-                <span className="exec-kpi-label">Top Category</span>
-                <span className="exec-kpi-value">{execReport.top_category}</span>
-              </div>
-              <div className="exec-kpi">
-                <span className="exec-kpi-label">Top Merchant</span>
-                <span className="exec-kpi-value">{execReport.top_merchant}</span>
-              </div>
-            </div>
-
-            {/* Two columns: behavioral insights | recommendations */}
-            <div className="exec-report-grid">
-              {execReport.behavioral_insights?.length > 0 && (
-                <div className="exec-report-col exec-report-col--wide">
-                  <h4 className="exec-col-title">🧠 Spending Behaviour</h4>
-                  <ul className="exec-list">
-                    {execReport.behavioral_insights.map((insight, i) => (
-                      <li key={i}>{insight}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {execReport.recommendations?.length > 0 && (
-                <div className="exec-report-col">
-                  <h4 className="exec-col-title">💡 Recommendations</h4>
-                  <ul className="exec-list reco-list">
-                    {execReport.recommendations.map((rec, i) => (
-                      <li key={i}>{rec}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="panel chat-panel">
-        <h2>Ask the finance agent</h2>
-        <div className="chat-row">
-          <input
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Try: How much did I spend on food in January?"
-          />
-          <button className={`action-button ${isAskingAgent ? "is-busy" : ""}`} onClick={handleAskAgent} disabled={isAskingAgent}>
-            {isAskingAgent ? "Thinking..." : "Ask"}
-          </button>
-        </div>
-        {/* <p className="table-note">You can now scope merchant queries by month, for example: `How much did I spend on Chai Adda in March?`</p> */}
-        {agentReply && (
-          <div className="agent-response">
-            <p>{agentReply.answer}</p>
-            <TransactionTable transactions={agentReply.supporting_transactions} onDelete={null} compact />
-          </div>
-        )}
-        {agentError && <p className="error-text">{agentError}</p>}
-      </section>
-
-      {activeChart && (
-        <div className="chart-modal-backdrop" onClick={() => setActiveChart(null)}>
-          <div className="chart-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="section-row">
-              <h2>{chartTitle(activeChart)}</h2>
-              <button className="ghost-button" onClick={() => setActiveChart(null)}>Close</button>
-            </div>
-            <div className="chart-modal-body">{renderExpandedChart(activeChart, chartCategoryData, chartMerchantData, dayTotals, runningTotal, theme, chartAxisColor, chartGridColor, chartTooltipStyle, chartTooltipLabelStyle, chartTooltipItemStyle)}</div>
-          </div>
-        </div>
-      )}
+function ChartEmpty({ label }) {
+  return (
+    <div className="empty-chart-state">
+      <span className="empty-icon">◌</span>
+      <span>{label}</span>
     </div>
   );
 }
 
-function ChartCard({ title, children, onExpand }) {
-  return (
-    <section className="panel chart-card">
-      <div className="chart-card-header">
-        <h3>{title}</h3>
-        <button className="ghost-button" onClick={onExpand}>Open</button>
-      </div>
-      {children}
-    </section>
+function TxBadge({ value, type }) {
+  return <span className={`tx-badge ${type}`}>{value}</span>;
+}
+
+/* ─── Transaction Table ────────────────────────────────────── */
+function TxTable({ rows, onDelete, busyId, compact }) {
+  if (!rows?.length) return (
+    <div style={{ padding: "24px 20px", color: "var(--text-muted)", fontSize: 13, textAlign: "center" }}>
+      No transactions to display.
+    </div>
   );
-}
-
-function EmptyChartState({ label }) {
-  return <div className="empty-chart-state">{label}</div>;
-}
-
-function TransactionTable({ transactions, onDelete, compact = false, busyId = null }) {
   return (
-    <div className={`table-shell ${compact ? "compact" : ""}`}>
+    <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Merchant</th>
-            <th>Amount</th>
-            <th>Category</th>
-            <th>Source</th>
-            <th>Type</th>
+            <th>Date</th><th>Merchant</th><th>Amount</th>
+            <th>Category</th><th>Type</th>{!compact && <th>Source</th>}
             {onDelete && <th />}
           </tr>
         </thead>
         <tbody>
-          {transactions.map((tx) => (
+          {rows.map(tx => (
             <tr key={tx.id}>
-              <td>{tx.date.slice(0, 10)}</td>
-              <td>{tx.merchant}</td>
-              <td>{formatAmount(tx.amount, tx.currency)}</td>
-              <td>{tx.category}</td>
-              <td>{tx.source}</td>
-              <td>{tx.type}</td>
+              <td style={{ color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{tx.date?.slice(0, 10)}</td>
+              <td style={{ fontWeight: 500 }}>{tx.merchant}</td>
+              <td>
+                <span className={`tx-amount ${tx.type}`}>{fmt(tx.amount, tx.currency)}</span>
+              </td>
+              <td><TxBadge value={tx.category} type="cat" /></td>
+              <td><TxBadge value={tx.type} type={tx.type} /></td>
+              {!compact && <td style={{ color: "var(--text-muted)" }}>{tx.source}</td>}
               {onDelete && (
                 <td>
-                  <button
-                    className={`ghost-button ${busyId === tx.id ? "is-busy" : ""}`}
-                    onClick={() => onDelete(tx.id)}
-                    disabled={busyId === tx.id}
-                  >
-                    {busyId === tx.id ? "Deleting..." : "Delete"}
+                  <button className="btn btn-ghost btn-sm"
+                    onClick={() => onDelete(tx.id)} disabled={busyId === tx.id}>
+                    {busyId === tx.id ? "…" : "Delete"}
                   </button>
                 </td>
               )}
@@ -729,65 +187,675 @@ function TransactionTable({ transactions, onDelete, compact = false, busyId = nu
   );
 }
 
-function chartTitle(activeChart) {
-  const titles = {
-    category: "Spend by category",
-    merchant: "Top merchants",
-    day: "Day-wise spend",
-    running: "Running total",
-  };
-  return titles[activeChart];
-}
-
-function renderExpandedChart(activeChart, chartCategoryData, chartMerchantData, dayTotals, runningTotal, theme, chartAxisColor, chartGridColor, chartTooltipStyle, chartTooltipLabelStyle, chartTooltipItemStyle) {
-  if (activeChart === "category") {
-    return (
-      <ResponsiveContainer width="100%" height={520}>
-        <PieChart>
-          <Pie data={chartCategoryData} dataKey="total" nameKey="category" innerRadius={100} outerRadius={160}>
-            {chartCategoryData.map((_, index) => (
-              <Cell key={index} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-        </PieChart>
-      </ResponsiveContainer>
-    );
-  }
-  if (activeChart === "merchant") {
-    return (
-      <ResponsiveContainer width="100%" height={520}>
-        <BarChart data={chartMerchantData} layout="vertical">
-          <XAxis type="number" tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-          <YAxis dataKey="merchant" type="category" width={180} tick={{ fill: chartAxisColor, fontSize: 13 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-          <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-          <Bar dataKey="total" fill="var(--emerald-text)" radius={[0, 10, 10, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  }
-  if (activeChart === "day") {
-    return (
-      <ResponsiveContainer width="100%" height={520}>
-        <BarChart data={dayTotals}>
-          <XAxis dataKey="date" tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-          <YAxis tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-          <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-          <Bar dataKey="total" fill="var(--emerald-text)" radius={[10, 10, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  }
+/* ─── Chart Modal ──────────────────────────────────────────── */
+function ChartModal({ title, children, onClose }) {
   return (
-    <ResponsiveContainer width="100%" height={520}>
-      <LineChart data={runningTotal}>
-        <XAxis dataKey="date" tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-        <YAxis tick={{ fill: chartAxisColor, fontSize: 12 }} axisLine={{ stroke: chartGridColor }} tickLine={{ stroke: chartGridColor }} />
-        <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
-        <Line dataKey="total" stroke="var(--emerald-text)" strokeWidth={3} dot />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal fadein" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
+    </div>
   );
 }
 
-export default App;
+/* ─── Main App ─────────────────────────────────────────────── */
+export default function App() {
+  const [session, setSession]         = useState(null);
+  const [theme, setTheme]             = useState("dark");
+  const [activeTab, setActiveTab]     = useState("dashboard");
+
+  // Data
+  const [transactions, setTx]         = useState([]);
+  const [report, setReport]           = useState(null);
+  const [execReport, setExecReport]   = useState(null);
+  const [preview, setPreview]         = useState(null);
+  const [agentReply, setAgentReply]   = useState(null);
+  const [imageJob, setImageJob]       = useState(null);
+
+  // UI state
+  const [question, setQuestion]       = useState("");
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  const [uploadMsg, setUploadMsg]     = useState("");
+  const [uploadErr, setUploadErr]     = useState("");
+  const [agentErr, setAgentErr]       = useState("");
+  const [reportErr, setReportErr]     = useState("");
+  const [showAll, setShowAll]         = useState(false);
+  const [activeChart, setActiveChart] = useState(null);
+
+  // Loading flags
+  const [busy, setBusy] = useState({
+    pdf: false, saving: false, images: false,
+    agent: false, report: false, clear: false, deleting: null,
+  });
+  const b = (k, v) => setBusy(p => ({ ...p, [k]: v }));
+
+  /* ── Auth ── */
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+      if (!s) {
+        setTx([]); setReport(null); setExecReport(null);
+        setPreview(null); setAgentReply(null); setImageJob(null);
+        setQuestion(""); setUploadMsg(""); setUploadErr("");
+        setAgentErr(""); setReportErr(""); setSelectedPdf(null);
+      }
+    });
+  }, []);
+
+  /* ── Theme ── */
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  /* ── Load data on login ── */
+  useEffect(() => { if (session) refresh(); }, [session]);
+
+  const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
+
+  async function refresh() {
+    const data = await fetchTransactions().catch(() => []);
+    setTx(data);
+    if (!data.length) { setReport(null); return; }
+    const dates = data.map(tx => new Date(tx.date));
+    const start = new Date(Math.min(...dates)).toISOString().slice(0, 10);
+    const end   = new Date(Math.max(...dates)).toISOString().slice(0, 10);
+    fetchReport(start, end).then(setReport).catch(() => setReport(null));
+  }
+
+  /* ── PDF ── */
+  async function handlePdfUpload() {
+    if (!selectedPdf) { setUploadErr("Select a PDF first."); return; }
+    try {
+      b("pdf", true); setUploadErr(""); setUploadMsg(`Parsing ${selectedPdf.name}…`);
+      const data = await uploadPdf(selectedPdf);
+      setPreview(data);
+      setUploadMsg(`Found ${data.transactions.length} transactions. Review and confirm below.`);
+      setActiveTab("dashboard");
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setUploadErr(typeof detail === "string" ? detail : "Extraction failed. Check your PDF and try again.");
+      setPreview(null);
+    } finally { b("pdf", false); }
+  }
+
+  async function handleImageUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    try {
+      setUploadErr(""); b("images", true);
+      setUploadMsg(`Queued ${files.length} image(s) for OCR…`);
+      const job = await uploadImages(files);
+      setImageJob(job);
+      const iv = setInterval(async () => {
+        const u = await pollImageJob(job.job_id);
+        setImageJob(u);
+        if (u.status === "completed" || u.status === "failed") {
+          clearInterval(iv); b("images", false); refresh();
+          setUploadMsg(u.status === "completed"
+            ? `Receipt processing complete.`
+            : `Processing failed: ${u.error ?? "unknown error"}`);
+        }
+      }, 2000);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setUploadErr(typeof detail === "string" ? detail : "Image processing failed.");
+      b("images", false);
+    }
+  }
+
+  async function savePreview() {
+    try {
+      b("saving", true);
+      await confirmPdf(preview.preview_id, preview.transactions.map(tx => tx.id));
+      setPreview(null); setUploadMsg("Transactions saved successfully.");
+      refresh();
+    } finally { b("saving", false); }
+  }
+
+  function removePreviewRow(id) {
+    setPreview(p => p ? { ...p, transactions: p.transactions.filter(tx => tx.id !== id) } : p);
+  }
+
+  /* ── Agent ── */
+  async function handleAsk() {
+    if (!question.trim()) return;
+    try {
+      b("agent", true); setAgentErr("");
+      const data = await askAgent(question);
+      setAgentReply(data);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setAgentErr(typeof detail === "string" ? detail : "Query failed. Please try again.");
+    } finally { b("agent", false); }
+  }
+
+  /* ── Delete / Clear ── */
+  async function handleDelete(id) {
+    try {
+      b("deleting", id);
+      await deleteTransaction(id);
+      refresh();
+    } finally { b("deleting", null); }
+  }
+
+  async function handleClear() {
+    try {
+      b("clear", true);
+      await clearTransactions();
+      setTx([]); setReport(null); setExecReport(null);
+      setPreview(null); setAgentReply(null);
+      setUploadMsg("All transactions cleared.");
+    } finally { b("clear", false); }
+  }
+
+  /* ── Exec Report ── */
+  async function handleReport() {
+    try {
+      b("report", true); setReportErr(""); setExecReport(null);
+      const data = await generateExecutiveReport();
+      setExecReport(data);
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setReportErr(typeof detail === "string" ? detail : "Report generation failed.");
+    } finally { b("report", false); }
+  }
+
+  /* ── Chart data ── */
+  const debits = transactions.filter(tx => tx.type === "debit");
+  const credits = transactions.filter(tx => tx.type === "credit");
+  const totalSpend = debits.reduce((s, tx) => s + tx.amount, 0);
+  const totalIn    = credits.reduce((s, tx) => s + tx.amount, 0);
+
+  const catData = (() => {
+    if (report?.category_breakdown?.length) return report.category_breakdown;
+    const m = {};
+    debits.forEach(tx => { m[tx.category] = (m[tx.category] || 0) + tx.amount; });
+    return Object.entries(m).map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total);
+  })();
+
+  const merchantData = (() => {
+    if (report?.top_merchants?.length) return report.top_merchants;
+    const m = {};
+    debits.forEach(tx => { m[tx.merchant] = (m[tx.merchant] || 0) + tx.amount; });
+    return Object.entries(m).map(([merchant, total]) => ({ merchant, total }))
+      .sort((a, b) => b.total - a.total).slice(0, 8);
+  })();
+
+  const dayData = (() => {
+    const m = {};
+    debits.forEach(tx => { const k = tx.date?.slice(0, 10); m[k] = (m[k] || 0) + tx.amount; });
+    return Object.entries(m).map(([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date));
+  })();
+
+  const runData = debits
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .reduce((acc, tx) => {
+      const last = acc[acc.length - 1]?.total || 0;
+      acc.push({ date: tx.date?.slice(0, 10), total: last + tx.amount });
+      return acc;
+    }, []);
+
+  /* ── Page map ── */
+  const pageTitles = {
+    dashboard: "Dashboard", upload: "Upload", chat: "Ask AI", report: "Financial Report",
+  };
+
+  if (!session) return <Auth />;
+
+  return (
+    <div className="app-shell">
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab}
+        session={session} theme={theme} toggleTheme={toggleTheme} />
+
+      <div className="main-content">
+        {/* Top bar */}
+        <div className="topbar">
+          <span className="topbar-title">{pageTitles[activeTab]}</span>
+          <div className="topbar-actions">
+            {activeTab === "dashboard" && transactions.length > 0 && (
+              <button className="btn btn-danger btn-sm" onClick={handleClear}
+                disabled={busy.clear}>
+                {busy.clear ? "Clearing…" : "Clear all"}
+              </button>
+            )}
+            {activeTab === "report" && (
+              <button className="btn btn-primary btn-sm" onClick={handleReport}
+                disabled={busy.report || transactions.length === 0}>
+                {busy.report ? "Generating…" : "Generate report"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="page-content">
+
+          {/* ═══ DASHBOARD ═══════════════════════════════════════ */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* KPI strip */}
+              <div className="stats-row fadein">
+                <div className="stat-card">
+                  <span className="stat-label">Total transactions</span>
+                  <span className="stat-value">{transactions.length}</span>
+                  <span className="stat-sub">{debits.length} debits · {credits.length} credits</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">Total spend</span>
+                  <span className="stat-value negative">{fmt(totalSpend)}</span>
+                  <span className="stat-sub">across {debits.length} debit transactions</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">Total received</span>
+                  <span className="stat-value positive">{fmt(totalIn)}</span>
+                  <span className="stat-sub">across {credits.length} credit transactions</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">Top category</span>
+                  <span className="stat-value" style={{ fontSize: 17 }}>
+                    {catData[0]?.category ?? "—"}
+                  </span>
+                  <span className="stat-sub">{catData[0] ? fmt(catData[0].total) : "No data yet"}</span>
+                </div>
+              </div>
+
+              {/* Preview confirm bar */}
+              {preview && (
+                <div className="card fadein">
+                  <div className="preview-bar">
+                    <span className="preview-bar-text">
+                      ✦ {preview.transactions.length} transactions extracted — review below then confirm.
+                    </span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setPreview(null)}>Discard</button>
+                      <button className="btn btn-primary btn-sm" onClick={savePreview} disabled={busy.saving}>
+                        {busy.saving ? "Saving…" : `Confirm ${preview.transactions.length} transactions`}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="card-body no-pad">
+                    <TxTable rows={preview.transactions} onDelete={removePreviewRow} busyId={busy.deleting} />
+                  </div>
+                </div>
+              )}
+
+              {/* Charts */}
+              <div className="chart-grid fadein">
+                {/* Category */}
+                <div className="chart-card">
+                  <div className="chart-card-header">
+                    <span className="chart-card-title">Spend by category</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveChart("category")}>Expand</button>
+                  </div>
+                  <div className="chart-card-body">
+                    {catData.length ? (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={catData} dataKey="total" nameKey="category" innerRadius={60} outerRadius={90}>
+                            {catData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                          </Pie>
+                <Tooltip contentStyle={ttStyle()} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : <ChartEmpty label="Upload and confirm a statement to see category trends." />}
+                  </div>
+                </div>
+
+                {/* Merchant */}
+                <div className="chart-card">
+                  <div className="chart-card-header">
+                    <span className="chart-card-title">Top merchants</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveChart("merchant")}>Expand</button>
+                  </div>
+                  <div className="chart-card-body">
+                    {merchantData.length ? (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={merchantData} layout="vertical">
+                          <XAxis type="number" hide />
+                          <YAxis dataKey="merchant" type="category" width={110}
+                            tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                          <Bar dataKey="total" fill={PALETTE[0]} radius={[0, 6, 6, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <ChartEmpty label="Merchant data appears after you confirm transactions." />}
+                  </div>
+                </div>
+
+                {/* Daily spend */}
+                <div className="chart-card">
+                  <div className="chart-card-header">
+                    <span className="chart-card-title">Daily spend</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveChart("day")}>Expand</button>
+                  </div>
+                  <div className="chart-card-body">
+                    {dayData.length ? (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={dayData}>
+                          <XAxis dataKey="date" hide />
+                          <YAxis tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                          <Bar dataKey="total" fill={PALETTE[2]} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : <ChartEmpty label="Daily breakdown appears once debits are saved." />}
+                  </div>
+                </div>
+
+                {/* Running total */}
+                <div className="chart-card">
+                  <div className="chart-card-header">
+                    <span className="chart-card-title">Cumulative spend</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveChart("running")}>Expand</button>
+                  </div>
+                  <div className="chart-card-body">
+                    {runData.length ? (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <LineChart data={runData}>
+                          <XAxis dataKey="date" hide />
+                          <YAxis tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                          <Line dataKey="total" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : <ChartEmpty label="Cumulative spend requires saved debit transactions." />}
+                  </div>
+                </div>
+              </div>
+
+              {/* Transactions table */}
+              <div className="card fadein">
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">Recent transactions</div>
+                    <div className="card-sub">{transactions.length} total · showing {showAll ? transactions.length : Math.min(5, transactions.length)}</div>
+                  </div>
+                  {transactions.length > 5 && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setShowAll(s => !s)}>
+                      {showAll ? "Show less" : `Show all ${transactions.length}`}
+                    </button>
+                  )}
+                </div>
+                <div className="card-body no-pad">
+                  <TxTable
+                    rows={showAll ? transactions : transactions.slice(0, 5)}
+                    onDelete={showAll ? handleDelete : null}
+                    busyId={busy.deleting}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ═══ UPLOAD ═══════════════════════════════════════════ */}
+          {activeTab === "upload" && (
+            <div className="fadein" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">Upload statement</div>
+                    <div className="card-sub">We'll extract and categorise your transactions automatically.</div>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div className="upload-zone">
+                    {/* PDF */}
+                    <label className="upload-tile">
+                      <span className="upload-tile-icon">📄</span>
+                      <span className="upload-tile-title">
+                        {selectedPdf ? selectedPdf.name : "Choose PDF"}
+                      </span>
+                      <span className="upload-tile-sub">UPI / bank statement PDF</span>
+                      <input type="file" accept="application/pdf" onChange={e => {
+                        setSelectedPdf(e.target.files?.[0] || null);
+                        setUploadErr("");
+                      }} />
+                    </label>
+
+                    {/* Images */}
+                    <label className="upload-tile">
+                      <span className="upload-tile-icon">🖼</span>
+                      <span className="upload-tile-title">Upload receipts</span>
+                      <span className="upload-tile-sub">JPG / PNG receipt images</span>
+                      <input type="file" accept="image/*" multiple onChange={handleImageUpload} />
+                    </label>
+                  </div>
+
+                  {selectedPdf && (
+                    <div style={{ marginTop: 16, display: "flex", gap: 10 }}>
+                      <button className={`btn btn-primary ${busy.pdf ? "busy" : ""}`}
+                        onClick={handlePdfUpload} disabled={busy.pdf}>
+                        {busy.pdf ? "Extracting…" : "Extract transactions"}
+                      </button>
+                      <button className="btn btn-ghost" onClick={() => setSelectedPdf(null)}>Cancel</button>
+                    </div>
+                  )}
+
+                  {imageJob && (
+                    <div style={{ marginTop: 14 }}>
+                      <StatusMsg
+                        msg={`Image job ${imageJob.status}${imageJob.status === "failed" ? ": " + imageJob.error : ""}`}
+                        type={imageJob.status === "completed" ? "success" : imageJob.status === "failed" ? "error" : "info"}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {uploadMsg && <StatusMsg msg={uploadMsg} type="success" />}
+              {uploadErr && <StatusMsg msg={uploadErr} type="error" />}
+            </div>
+          )}
+
+          {/* ═══ ASK AI ═══════════════════════════════════════════ */}
+          {activeTab === "chat" && (
+            <div className="fadein" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">Ask the finance agent</div>
+                    <div className="card-sub">
+                      Natural language queries over your entire transaction history.
+                    </div>
+                  </div>
+                </div>
+                <div className="card-body">
+                  <div className="chat-input-row">
+                    <input className="chat-input" value={question}
+                      onChange={e => setQuestion(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleAsk()}
+                      placeholder="e.g. How much did I spend on food in March?" />
+                    <button className={`btn btn-primary ${busy.agent ? "busy" : ""}`}
+                      onClick={handleAsk} disabled={busy.agent}>
+                      {busy.agent ? "Thinking…" : "Ask"}
+                    </button>
+                  </div>
+
+                  {agentReply && (
+                    <div className="agent-bubble fadein">
+                      <p style={{ marginBottom: agentReply.supporting_transactions?.length ? 14 : 0 }}>
+                        {agentReply.answer}
+                      </p>
+                      {agentReply.supporting_transactions?.length > 0 && (
+                        <TxTable rows={agentReply.supporting_transactions} compact />
+                      )}
+                    </div>
+                  )}
+                  {agentErr && <StatusMsg msg={agentErr} type="error" />}
+                </div>
+              </div>
+
+              {/* Prompt ideas */}
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title">Example questions</div>
+                </div>
+                <div className="card-body">
+                  {[
+                    "How much did I spend total?",
+                    "What's my biggest single transaction?",
+                    "Show all food transactions in January",
+                    "Compare spend in March vs April",
+                    "Who did I pay the most?",
+                  ].map(q => (
+                    <button key={q} className="btn btn-ghost btn-sm"
+                      style={{ marginRight: 8, marginBottom: 8 }}
+                      onClick={() => { setQuestion(q); }}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ REPORT ═══════════════════════════════════════════ */}
+          {activeTab === "report" && (
+            <div className="fadein" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {reportErr && <StatusMsg msg={reportErr} type="error" />}
+
+              {!execReport && !busy.report && (
+                <div className="card">
+                  <div className="card-body" style={{ textAlign: "center", padding: "48px 24px" }}>
+                    <div style={{ fontSize: 40, marginBottom: 16 }}>▤</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Executive Report</div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 24, maxWidth: 380, margin: "0 auto 24px" }}>
+                      AI-synthesised analysis of your spending patterns, behavioural insights, and personalised recommendations.
+                    </div>
+                    <button className="btn btn-primary"
+                      onClick={handleReport} disabled={transactions.length === 0}>
+                      {transactions.length === 0 ? "Upload transactions first" : "Generate report"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {busy.report && (
+                <div className="card">
+                  <div className="card-body" style={{ textAlign: "center", padding: "48px 24px" }}>
+                    <div style={{ fontSize: 30, marginBottom: 16 }} className="spinning">⚙</div>
+                    <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+                      Analysing your financial data…
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {execReport && (
+                <>
+                  {/* Health + headline */}
+                  <div className="card">
+                    <div className="card-body">
+                      <div className="health-ring-wrap">
+                        <div className="health-ring" style={{ "--score": execReport.health_score }}>
+                          <div className="health-ring-inner">
+                            <span className="health-ring-num">{execReport.health_score}</span>
+                            <span className="health-ring-lbl">{execReport.health_label}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="exec-headline">{execReport.headline}</div>
+                          <div className="exec-overview">{execReport.overview}</div>
+                          <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-muted)" }}>
+                            Period: {execReport.period_label}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPIs */}
+                  <div className="exec-kpi-grid">
+                    <div className="exec-kpi-card">
+                      <div className="exec-kpi-label">Total spend</div>
+                      <div className="exec-kpi-value">₹{execReport.total_spend?.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                    </div>
+                    <div className="exec-kpi-card">
+                      <div className="exec-kpi-label">Top category</div>
+                      <div className="exec-kpi-value" style={{ fontSize: 15 }}>{execReport.top_category}</div>
+                    </div>
+                    <div className="exec-kpi-card">
+                      <div className="exec-kpi-label">Top merchant</div>
+                      <div className="exec-kpi-value" style={{ fontSize: 15 }}>{execReport.top_merchant}</div>
+                    </div>
+                  </div>
+
+                  {/* Insights grid */}
+                  <div className="exec-insights-grid">
+                    {execReport.behavioral_insights?.length > 0 && (
+                      <div className="insight-col">
+                        <div className="insight-col-title">Behavioral insights</div>
+                        <ul className="insight-list">
+                          {execReport.behavioral_insights.map((s, i) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {execReport.recommendations?.length > 0 && (
+                      <div className="insight-col reco">
+                        <div className="insight-col-title">Recommendations</div>
+                        <ul className="insight-list">
+                          {execReport.recommendations.map((s, i) => <li key={i}>{s}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button className="btn btn-primary" onClick={handleReport} disabled={busy.report}>
+                      Regenerate
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ Chart Modal ════════════════════════════════════════ */}
+      {activeChart && (
+        <ChartModal
+          title={{ category: "Spend by category", merchant: "Top merchants", day: "Daily spend", running: "Cumulative spend"}[activeChart]}
+          onClose={() => setActiveChart(null)}
+        >
+          <ResponsiveContainer width="100%" height={480}>
+            {activeChart === "category" ? (
+              <PieChart>
+                <Pie data={catData} dataKey="total" nameKey="category" innerRadius={100} outerRadius={180}>
+                  {catData.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={ttStyle()} />
+              </PieChart>
+            ) : activeChart === "merchant" ? (
+              <BarChart data={merchantData} layout="vertical">
+                <XAxis type="number" tick={{ fill: "var(--text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis dataKey="merchant" type="category" width={160}
+                  tick={{ fill: "var(--text-secondary)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                <Bar dataKey="total" fill={PALETTE[0]} radius={[0, 6, 6, 0]} />
+              </BarChart>
+            ) : activeChart === "day" ? (
+              <BarChart data={dayData}>
+                <XAxis dataKey="date" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                <Bar dataKey="total" fill={PALETTE[2]} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            ) : (
+              <LineChart data={runData}>
+                <XAxis dataKey="date" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "var(--text-secondary)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={ttStyle()} />
+                <Line dataKey="total" stroke={PALETTE[0]} strokeWidth={2.5} dot={false} />
+              </LineChart>
+            )}
+          </ResponsiveContainer>
+        </ChartModal>
+      )}
+    </div>
+  );
+}

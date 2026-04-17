@@ -48,6 +48,10 @@ class TransactionRepository:
     def delete(self, user_id: str, transaction_id: str) -> bool:
         return self.store.delete(user_id, transaction_id)
 
+    def delete_all(self, user_id: str) -> None:
+        """Delete all transactions for a user in a single query."""
+        self.store.delete_all(user_id)
+
     def _prepare_transaction(self, user_id: str, tx: TransactionRecord) -> TransactionRecord:
         tx.user_id = user_id
         line_items = tx.line_items

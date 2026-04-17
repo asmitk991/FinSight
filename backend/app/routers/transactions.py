@@ -40,11 +40,6 @@ async def delete_transaction(transaction_id: str, user_id: str = Depends(get_cur
 
 @router.delete("")
 async def clear_transactions(user_id: str = Depends(get_current_user_id)):
-    # In a real app, you might not want to allow clearing everything
-    # But for this implementation, we scope it to the current user
     repository = TransactionRepository()
-    transactions = repository.list_transactions(user_id)
-    for tx in transactions:
-        repository.delete(user_id, tx.id)
-        VectorStore().delete(user_id, tx.id)
+    repository.delete_all(user_id)
     return {"deleted": "all_user_data"}

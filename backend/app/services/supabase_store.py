@@ -61,6 +61,12 @@ class SupabaseStore:
         )
         return len(response.data) > 0
 
+    def delete_all(self, user_id: str) -> None:
+        """Delete all transactions for a user in a single query — O(1) regardless of count."""
+        if not self.client:
+            return
+        self.client.table("transactions").delete().eq("user_id", user_id).execute()
+
     def get_merchants(self, user_id: str) -> list[str]:
         if not self.client:
             return []
