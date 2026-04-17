@@ -10,16 +10,13 @@ from app.services.transaction_store import ImageJobRepository, TransactionReposi
 from app.services.vector_store import VectorStore
 
 
-def process_receipts_job(job_id: str, image_paths: list[str]) -> dict:
+def process_receipts_job(user_id: str, job_id: str, image_paths: list[str]) -> dict:
     jobs = ImageJobRepository()
     repository = TransactionRepository()
     vectors = VectorStore()
     pipeline = ReceiptPipeline()
 
-    job = jobs.get(job_id) or ImageJob(id=job_id)
-    job.status = ImageJobStatus.processing
-    job.updated_at = datetime.utcnow()
-    jobs.save(job)
+    jobs.save(user_id, job_id, ImageJobStatus.processing)
 
     try:
         results: list[TransactionRecord] = []
@@ -27,6 +24,7 @@ def process_receipts_job(job_id: str, image_paths: list[str]) -> dict:
             receipt = pipeline.parse_receipt(image_path)
             results.append(
                 TransactionRecord(
+                    user_id=user_id,
                     date=receipt.date,
                     merchant=receipt.vendor,
                     amount=receipt.total,
@@ -47,21 +45,15 @@ def process_receipts_job(job_id: str, image_paths: list[str]) -> dict:
                     ),
                 )
             )
-        repository.save_many(results)
-        vectors.upsert_transactions(results)
-        job.status = ImageJobStatus.completed
-        job.results = results
-        job.updated_at = datetime.utcnow()
-        jobs.save(job)
-        return job.model_dump(mode="json")
+        saved = repository.save_many(user_id, results)
+        vectors.upsert_transactions(user_id, saved)
+        jobs.save(user_id, job_id, ImageJobStatus.completed, results=saved)
+        return {"id": job_id, "status": ImageJobStatus.completed, "results": [tx.model_dump(mode="json") for tx in saved]}
     except Exception as exc:  # pragma: no cover
-        job.status = ImageJobStatus.failed
-        job.error = str(exc)
-        job.updated_at = datetime.utcnow()
-        jobs.save(job)
+        jobs.save(user_id, job_id, ImageJobStatus.failed, error=str(exc))
         raise
 
 
 @celery_app.task(name="app.tasks.process_receipts")
-def process_receipts(job_id: str, image_paths: list[str]) -> dict:
-    return process_receipts_job(job_id, image_paths)
+def process_receipts(user_id: str, job_id: str, image_paths: list[str]) -> dict:
+    return process_receipts_job(user_id, job_id, image_paths)

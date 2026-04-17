@@ -62,6 +62,7 @@ class TransactionBase(BaseModel):
     line_items: list[LineItem] = Field(default_factory=list)
     raw_text: str
     embedding_text: str
+    user_id: str | None = None
 
 
 class TransactionRecord(TransactionBase):
@@ -81,6 +82,7 @@ class ParsedTransaction(BaseModel):
     counterparty_type: CounterpartyType | None = None
     raw_category: str | None = None
     raw_text: str
+    user_id: str | None = None
 
 
 class PdfPreviewResponse(BaseModel):

@@ -43,13 +43,14 @@ class FinanceAgentService:
 
     def query(
         self,
+        user_id: str,
         question: str,
         top_k: int = 8,
         start_date: date | None = None,
         end_date: date | None = None,
         category: str | None = None,
     ) -> AgentQueryResponse:
-        transactions = self.transactions.list_transactions(start_date=start_date, end_date=end_date, category=None)
+        transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date, category=None)
         plan = self._build_plan(question, transactions, top_k=top_k, explicit_category=category)
         filtered = self._apply_plan(transactions, plan)
         metrics = self._build_metrics(filtered)
@@ -58,14 +59,14 @@ class FinanceAgentService:
         supporting = [] if needs_clarification else self._select_supporting(plan, filtered)
         return AgentQueryResponse(answer=answer, supporting_transactions=supporting, metrics=metrics)
 
-    def report(self, start_date: date, end_date: date):
-        transactions = self.transactions.list_transactions(start_date=start_date, end_date=end_date)
+    def report(self, user_id: str, start_date: date, end_date: date):
+        transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date)
         return summarize_transactions(transactions, start_date, end_date)
 
-    def executive_report(self, start_date: date | None = None, end_date: date | None = None) -> dict:
+    def executive_report(self, user_id: str, start_date: date | None = None, end_date: date | None = None) -> dict:
         from app.services.currency import convert_to_inr as _cvt
 
-        transactions = self.transactions.list_transactions(start_date=start_date, end_date=end_date)
+        transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date)
         spend_txs = [tx for tx in transactions if tx.type.value == "debit"]
 
         if not transactions:

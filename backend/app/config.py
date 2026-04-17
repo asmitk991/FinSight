@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     google_gemini_model: str = "gemini-1.5-flash"
     layoutlm_model_name: str | None = None
     gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
+    supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
+    supabase_anon_key: str | None = Field(default=None, alias="SUPABASE_ANON_KEY")
+    supabase_service_role_key: str | None = Field(default=None, alias="SUPABASE_SERVICE_ROLE_KEY")
+    supabase_jwt_secret: str | None = Field(default=None, alias="SUPABASE_JWT_SECRET")
+    hf_api_token: str | None = Field(default=None, alias="HF_API_TOKEN")
     redis_url: str = "redis://localhost:6379/0"
     use_celery_for_images: bool = False
     usd_to_inr: float = 92.37

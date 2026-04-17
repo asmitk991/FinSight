@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
 import {
   BarChart,
   Bar,
@@ -27,60 +28,56 @@ import {
 
 const COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#f3f4f6", "#0ea5e9", "#ef4444"];
 
-function getChartAxisColor(theme) {
-  return theme === "light" ? "#0f172a" : "#e5e7eb";
-}
+function Auth() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-function getChartGridColor(theme) {
-  return theme === "light" ? "rgba(51, 65, 85, 0.22)" : "rgba(148, 163, 184, 0.24)";
-}
-
-function getChartTooltipStyle(theme) {
-  if (theme === "light") {
-    return {
-      backgroundColor: "#ffffff",
-      border: "1px solid rgba(15, 23, 42, 0.14)",
-      color: "#0f172a",
-      borderRadius: "14px",
-      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.16)",
-    };
-  }
-  return {
-    backgroundColor: "#f8fafc",
-    border: "1px solid rgba(15, 23, 42, 0.14)",
-    color: "#0f172a",
-    borderRadius: "14px",
-    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.2)",
+  const handleAuth = async (isSignUp) => {
+    setLoading(true);
+    setError(null);
+    const { error } = isSignUp 
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) setError(error.message);
+    setLoading(false);
   };
-}
 
-function getChartTooltipLabelStyle(theme) {
-  return {
-    color: theme === "light" ? "#0f172a" : "#111827",
-    fontWeight: 600,
-  };
-}
-
-function getChartTooltipItemStyle(theme) {
-  return {
-    color: theme === "light" ? "#0f172a" : "#111827",
-  };
-}
-
-function formatAmount(amount, currency = "INR") {
-  const symbolMap = {
-    INR: "INR",
-    USD: "$",
-    AED: "AED",
-    EUR: "EUR",
-    GBP: "GBP",
-  };
-  const symbol = symbolMap[currency] || currency;
-  if (symbol === "$") return `$ ${amount.toFixed(2)}`;
-  return `${symbol} ${amount.toFixed(2)}`;
+  return (
+    <div className="auth-container">
+      <div className="auth-card">
+        <h1>FinSight</h1>
+        <p>Your AI-powered personal finance assistant.</p>
+        {error && <div className="error-text">{error}</div>}
+        <input 
+          type="email" 
+          placeholder="Email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+        />
+        <input 
+          type="password" 
+          placeholder="Password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+        />
+        <div className="auth-buttons">
+          <button onClick={() => handleAuth(false)} disabled={loading}>
+            {loading ? "..." : "Sign In"}
+          </button>
+          <button className="ghost-button" onClick={() => handleAuth(true)} disabled={loading}>
+            Sign Up
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function App() {
+  const [session, setSession] = useState(null);
   const [theme, setTheme] = useState("dark");
   const [preview, setPreview] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -105,9 +102,23 @@ function App() {
   const [reportError, setReportError] = useState("");
 
   useEffect(() => {
-    refreshDashboard();
-    document.documentElement.setAttribute("data-theme", theme);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
   }, []);
+
+  useEffect(() => {
+    if (session) {
+      refreshDashboard();
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [session, theme]);
+
+  if (!session) return <Auth />;
 
   function toggleTheme() {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -316,6 +327,9 @@ function App() {
       <div className="theme-toggle-row">
          <button className="ghost-button" onClick={toggleTheme}>
             {theme === "dark" ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}
+         </button>
+         <button className="ghost-button" onClick={() => supabase.auth.signOut()}>
+            🚪 Sign Out
          </button>
       </div>
       <header className="hero">
