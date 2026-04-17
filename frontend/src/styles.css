@@ -680,3 +680,86 @@ button:disabled {
 .reco-list li {
   color: var(--emerald-text);
 }
+
+/* =========================================
+   Auth / Login Screen
+   ========================================= */
+
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(circle at center, #112240 0%, var(--bg-color) 70%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px;
+  border-radius: 28px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.auth-card h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--emerald-text);
+}
+
+.auth-card p {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  font-size: 0.95rem;
+}
+
+.auth-card input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.auth-card input:focus {
+  border-color: var(--emerald-text);
+  box-shadow: 0 0 10px var(--emerald-shadow);
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.auth-buttons button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, var(--emerald-gradient-start) 0%, var(--emerald-gradient-end) 100%);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.auth-buttons button.ghost-button {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text-color);
+}
+
+.auth-buttons button:hover {
+  transform: scale(1.02);
+}
