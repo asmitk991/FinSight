@@ -700,7 +700,6 @@ export default function App() {
                     "What's my biggest single transaction?",
                     "Show all food transactions in January",
                     "Compare spend in March vs April",
-                    "Who did I pay the most?",
                   ].map(q => (
                     <button key={q} className="btn btn-ghost btn-sm"
                       style={{ marginRight: 8, marginBottom: 8 }}
