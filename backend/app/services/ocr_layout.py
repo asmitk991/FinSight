@@ -38,12 +38,14 @@ class ReceiptPipeline:
         self.hf_token = self.settings.hf_api_token
 
     def parse_receipt(self, image_path: str) -> ReceiptExtraction:
-        # 1. Primary Extraction: Try Gemini Flash (Vision) as it's the most accurate
-        llm_receipt = self._extract_with_gemini(image_path)
+        # 1. Primary Extraction: Specialized Document-AI via Hugging Face
+        # (Showcases OCR & Document Understanding skills)
+        llm_receipt = self._extract_with_huggingface(image_path)
         
-        # 2. Secondary Extraction: If Gemini fails, try Hugging Face
+        # 2. Secondary Extraction: LLM Fallback (Gemini)
+        # Used if specialized OCR fails to identify basic merchant data
         if not llm_receipt or not llm_receipt.get("vendor"):
-            llm_receipt = self._extract_with_huggingface(image_path)
+            llm_receipt = self._extract_with_gemini(image_path)
 
         if not llm_receipt or not llm_receipt.get("vendor"):
             raise RuntimeError("Could not extract any meaningful data from receipt. Ensure your API keys are valid.")
@@ -88,24 +90,36 @@ class ReceiptPipeline:
         if not self.hf_token:
             return {}
         
-        # Using Microsoft's LayoutLMv3 hosted on Hugging Face Inference API
-        model_id = "microsoft/layoutlmv3-base"
+        # Using a Document-QA model which is better at structured extraction than raw OCR
+        model_id = "impira/layoutlm-document-qa"
         url = f"https://api-inference.huggingface.co/models/{model_id}"
         headers = {"Authorization": f"Bearer {self.hf_token}"}
         
         with open(image_path, "rb") as f:
-            data = f.read()
+            img_base64 = base64.b64encode(f.read()).decode("utf-8")
 
+        queries = {
+            "vendor": "What is the name of the store or merchant?",
+            "total": "What is the total amount or grand total?",
+            "date": "What is the date of the transaction?",
+        }
+        
+        results = {}
         try:
-            # LayoutLMv3 via Inference API returns a structured layout
-            # However, for free API, we often use generic OCR if the model isn't active
-            response = requests.post(url, headers=headers, data=data)
-            hf_res = response.json()
+            for key, question in queries.items():
+                payload = {
+                    "inputs": {
+                        "image": img_base64,
+                        "question": question
+                    }
+                }
+                response = requests.post(url, headers=headers, json=payload, timeout=20)
+                if response.status_code == 200:
+                    data = response.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        results[key] = data[0].get("answer")
             
-            # Since HF free API doesn't always return structured JSON for all models,
-            # we would typically process the bounding boxes here.
-            # For this 'production' path, we lean on Gemini but treat HF as the OCR backup.
-            return {} # Placeholder for complex HF post-processing
+            return results
         except Exception:
             return {}
 
