@@ -8,9 +8,14 @@ RUN npm install
 
 COPY . .
 
-# Set build-time env for API URL (can be overridden)
+# Set build-time env for API and Supabase
 ARG VITE_API_URL
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
 RUN npm run build
 
