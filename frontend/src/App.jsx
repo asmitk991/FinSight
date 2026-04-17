@@ -161,6 +161,21 @@ function App() {
 
     supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Clear ALL state when user signs out to prevent data leaking to next user
+      if (!session) {
+        setTransactions([]);
+        setReport(null);
+        setExecReport(null);
+        setAgentReply(null);
+        setPreview(null);
+        setImageJob(null);
+        setUploadMessage("");
+        setUploadError("");
+        setAgentError("");
+        setReportError("");
+        setQuestion("");
+        setSelectedPdf(null);
+      }
     });
   }, []);
 
