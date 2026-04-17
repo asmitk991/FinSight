@@ -25,11 +25,7 @@ async def ingest_pdf(file: UploadFile = File(...), user_id: str = Depends(get_cu
         temp_file.write(await file.read())
         temp_path = temp_file.name
     
-    transactions = PdfIngestionService().extract_preview(temp_path)
-    # The return type says PdfPreviewResponse but PdfIngestionService().extract_preview returns transactions
-    preview_id = str(uuid4())
-    PreviewRepository().create(user_id, preview_id, transactions)
-    return PdfPreviewResponse(preview_id=preview_id, transactions=transactions)
+    return PdfIngestionService().extract_preview(user_id, temp_path)
 
 
 @router.post("/pdf/confirm")

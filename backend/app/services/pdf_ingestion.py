@@ -29,7 +29,7 @@ class PdfIngestionService:
         self.preview_repository = PreviewRepository()
         self.llm_service = LlmService()
 
-    def extract_preview(self, file_path: str) -> PdfPreviewResponse:
+    def extract_preview(self, user_id: str, file_path: str) -> PdfPreviewResponse:
         parsed = self._extract_transactions(file_path)
         transactions: list[TransactionRecord] = []
         for item in parsed:
@@ -53,6 +53,7 @@ class PdfIngestionService:
                 category = profile.category
             transactions.append(
                 TransactionRecord(
+                    user_id=user_id,
                     date=item.date,
                     merchant=resolved_merchant,
                     amount=item.amount,
@@ -81,7 +82,7 @@ class PdfIngestionService:
             )
 
         preview_id = str(uuid4())
-        self.preview_repository.create(preview_id, transactions)
+        self.preview_repository.create(user_id, preview_id, transactions)
         return PdfPreviewResponse(preview_id=preview_id, transactions=transactions)
 
     def _extract_transactions(self, file_path: str) -> list[ParsedTransaction]:
