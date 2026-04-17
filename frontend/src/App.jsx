@@ -76,6 +76,59 @@ function Auth() {
   );
 }
 
+function getChartAxisColor(theme) {
+  return theme === "light" ? "#0f172a" : "#e5e7eb";
+}
+
+function getChartGridColor(theme) {
+  return theme === "light" ? "rgba(51, 65, 85, 0.22)" : "rgba(148, 163, 184, 0.24)";
+}
+
+function getChartTooltipStyle(theme) {
+  if (theme === "light") {
+    return {
+      backgroundColor: "#ffffff",
+      border: "1px solid rgba(15, 23, 42, 0.14)",
+      color: "#0f172a",
+      borderRadius: "14px",
+      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.16)",
+    };
+  }
+  return {
+    backgroundColor: "#f8fafc",
+    border: "1px solid rgba(15, 23, 42, 0.14)",
+    color: "#0f172a",
+    borderRadius: "14px",
+    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.2)",
+  };
+}
+
+function getChartTooltipLabelStyle(theme) {
+  return {
+    color: theme === "light" ? "#0f172a" : "#111827",
+    fontWeight: 600,
+  };
+}
+
+function getChartTooltipItemStyle(theme) {
+  return {
+    color: theme === "light" ? "#0f172a" : "#111827",
+  };
+}
+
+function formatAmount(amount, currency = "INR") {
+  const symbolMap = {
+    INR: "INR",
+    USD: "$",
+    AED: "AED",
+    EUR: "EUR",
+    GBP: "GBP",
+  };
+  const symbol = symbolMap[currency] || currency;
+  if (symbol === "$") return `$ ${amount.toFixed(2)}`;
+  return `${symbol} ${amount.toFixed(2)}`;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [theme, setTheme] = useState("dark");
