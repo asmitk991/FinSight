@@ -368,27 +368,33 @@ export default function App() {
   /* ── Chart data ── */
   const debits = transactions.filter(tx => tx.type === "debit");
   const credits = transactions.filter(tx => tx.type === "credit");
-  const totalSpend = debits.reduce((s, tx) => s + tx.amount, 0);
-  const totalIn    = credits.reduce((s, tx) => s + tx.amount, 0);
+  // Currency helper
+  const conv = (amt, cur) => {
+    const rates = { INR: 1, USD: 83.15, AED: 22.64, EUR: 90.41, GBP: 105.72 };
+    return Number(amt) * (rates[cur?.toUpperCase()] || 1);
+  };
+
+  const totalSpend = debits.reduce((s, tx) => s + conv(tx.amount, tx.currency), 0);
+  const totalIn    = credits.reduce((s, tx) => s + conv(tx.amount, tx.currency), 0);
 
   const catData = (() => {
     if (report?.category_breakdown?.length) return report.category_breakdown;
     const m = {};
-    debits.forEach(tx => { m[tx.category] = (m[tx.category] || 0) + tx.amount; });
+    debits.forEach(tx => { m[tx.category] = (m[tx.category] || 0) + conv(tx.amount, tx.currency); });
     return Object.entries(m).map(([category, total]) => ({ category, total })).sort((a, b) => b.total - a.total);
   })();
 
   const merchantData = (() => {
     if (report?.top_merchants?.length) return report.top_merchants;
     const m = {};
-    debits.forEach(tx => { m[tx.merchant] = (m[tx.merchant] || 0) + tx.amount; });
+    debits.forEach(tx => { m[tx.merchant] = (m[tx.merchant] || 0) + conv(tx.amount, tx.currency); });
     return Object.entries(m).map(([merchant, total]) => ({ merchant, total }))
       .sort((a, b) => b.total - a.total).slice(0, 8);
   })();
 
   const dayData = (() => {
     const m = {};
-    debits.forEach(tx => { const k = tx.date?.slice(0, 10); m[k] = (m[k] || 0) + tx.amount; });
+    debits.forEach(tx => { const k = tx.date?.slice(0, 10); m[k] = (m[k] || 0) + conv(tx.amount, tx.currency); });
     return Object.entries(m).map(([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date));
   })();
 
@@ -396,7 +402,7 @@ export default function App() {
     .sort((a, b) => new Date(a.date) - new Date(b.date))
     .reduce((acc, tx) => {
       const last = acc[acc.length - 1]?.total || 0;
-      acc.push({ date: tx.date?.slice(0, 10), total: last + tx.amount });
+      acc.push({ date: tx.date?.slice(0, 10), total: last + conv(tx.amount, tx.currency) });
       return acc;
     }, []);
 

@@ -134,6 +134,9 @@ class LlmService:
         if self.available and self.model:
             response = self.model.generate_content([PDF_PROMPT, "\n".join(raw_rows)])
             text = response.text.strip()
+            # Clean possible markdown fences
+            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
             data = json.loads(text)
             return [self._to_parsed_transaction(item, " | ".join(raw_rows)) for item in data]
         return self._fallback_parse(raw_rows)
@@ -184,7 +187,11 @@ class LlmService:
         }
         try:
             response = self.model.generate_content([QUERY_PLAN_PROMPT, json.dumps(payload)])
-            return json.loads(response.text.strip())
+            text = response.text.strip()
+            # Clean possible markdown fences
+            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+            return json.loads(text)
         except Exception:
             return None
 
@@ -194,7 +201,11 @@ class LlmService:
         try:
             image = Image.open(Path(image_path))
             response = self.model.generate_content([RECEIPT_IMAGE_PROMPT, image])
-            return json.loads(response.text.strip())
+            text = response.text.strip()
+            # Clean possible markdown fences
+            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+            return json.loads(text)
         except Exception:
             return None
 
