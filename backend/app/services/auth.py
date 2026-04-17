@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+from supabase import create_client
 from app.config import get_settings
 
 security = HTTPBearer()
@@ -9,28 +9,27 @@ def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(secu
     settings = get_settings()
     token = credentials.credentials
 
-    if not settings.supabase_jwt_secret:
-        # No secret configured — block all requests to prevent data corruption
+    if not settings.supabase_url or not settings.supabase_service_role_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured on this server. Please set SUPABASE_JWT_SECRET.",
+            detail="Supabase is not configured on this server.",
         )
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            options={"verify_aud": False}
-        )
-        user_id = payload.get("sub")
-        if not user_id:
+        # Use the service role client to verify the user's token
+        # This handles ALL signing algorithms (HS256, RS256) automatically
+        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        response = client.auth.get_user(token)
+        user = response.user
+        if not user or not user.id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User ID (sub) missing from token.",
+                detail="Invalid or expired token.",
             )
-        return str(user_id)
-    except JWTError as e:
+        return str(user.id)
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token validation failed: {str(e)}",
