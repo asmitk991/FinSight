@@ -29,7 +29,11 @@ async def ingest_pdf(file: UploadFile = File(...), user_id: str = Depends(get_cu
 
 
 @router.post("/pdf/confirm")
-async def confirm_pdf_preview(payload: ConfirmPreviewRequest, user_id: str = Depends(get_current_user_id)):
+async def confirm_pdf_preview(
+    background_tasks: BackgroundTasks,
+    payload: ConfirmPreviewRequest, 
+    user_id: str = Depends(get_current_user_id)
+):
     previews = PreviewRepository()
     repository = TransactionRepository()
     vectors = VectorStore()
@@ -43,7 +47,8 @@ async def confirm_pdf_preview(payload: ConfirmPreviewRequest, user_id: str = Dep
         selected = [tx for tx in preview_transactions if tx.id in allowed]
     
     saved = repository.save_many(user_id, selected)
-    vectors.upsert_transactions(user_id, saved)
+    # Run vector indexing in the background — user gets instant response
+    background_tasks.add_task(vectors.upsert_transactions, user_id, saved)
     previews.delete(user_id, payload.preview_id)
     return {"saved": len(saved), "transactions": [tx.model_dump(mode="json") for tx in saved]}
 

@@ -5,20 +5,28 @@ from app.config import get_settings
 
 security = HTTPBearer()
 
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    settings = get_settings()
-    token = credentials.credentials
+# Module-level singleton — created once, reused for all requests
+_supabase_client = None
 
-    if not settings.supabase_url or not settings.supabase_service_role_key:
+def _get_client():
+    global _supabase_client
+    if _supabase_client is None:
+        settings = get_settings()
+        if settings.supabase_url and settings.supabase_service_role_key:
+            _supabase_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return _supabase_client
+
+def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    token = credentials.credentials
+    client = _get_client()
+
+    if not client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Supabase is not configured on this server.",
         )
 
     try:
-        # Use the service role client to verify the user's token
-        # This handles ALL signing algorithms (HS256, RS256) automatically
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
         response = client.auth.get_user(token)
         user = response.user
         if not user or not user.id:

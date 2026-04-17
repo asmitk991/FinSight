@@ -28,14 +28,40 @@ class VectorStore:
         except Exception:
             return None
 
+    def _get_embeddings_batch(self, texts: list[str]) -> list[list[float]] | None:
+        """Send all texts in a single API call — much faster than one-by-one."""
+        if not self.settings.hf_api_token or not texts:
+            return None
+        try:
+            response = requests.post(
+                self.api_url,
+                headers=self.headers,
+                json={"inputs": texts, "options": {"wait_for_model": True}},
+                timeout=30,
+            )
+            result = response.json()
+            # HuggingFace returns a list of embeddings when given a list of inputs
+            if isinstance(result, list) and len(result) == len(texts):
+                return result
+            return None
+        except Exception:
+            return None
+
     def upsert_transactions(self, user_id: str, transactions: list[TransactionRecord]) -> None:
-        if not self.store.client:
+        if not self.store.client or not transactions:
             return
-            
-        for tx in transactions:
-            embedding = self._get_embedding(tx.embedding_text)
-            if embedding:
-                # Update the transaction in Supabase with the vector
+
+        # Batch all texts in ONE API call instead of N calls
+        texts = [tx.embedding_text for tx in transactions if tx.embedding_text]
+        if not texts:
+            return
+
+        embeddings = self._get_embeddings_batch(texts)
+        if not embeddings:
+            return
+
+        for tx, embedding in zip(transactions, embeddings):
+            if embedding and tx.id:
                 self.store.client.table("transactions").update({
                     "embedding_vector": embedding
                 }).eq("id", tx.id).eq("user_id", user_id).execute()
