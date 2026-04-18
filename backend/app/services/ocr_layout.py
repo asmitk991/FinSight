@@ -88,44 +88,83 @@ class ReceiptPipeline:
 
     def _extract_with_huggingface(self, image_path: str) -> dict:
         if not self.hf_token:
-            print("HF Document QA skipped: HF_API_TOKEN is not set.")
+            print("HF skipped: HF_API_TOKEN is not set.")
             return {}
-        
-        # Using a Document-QA model which is better at structured extraction than raw OCR
-        model_id = "impira/layoutlm-document-qa"
-        url = f"https://api-inference.huggingface.co/models/{model_id}"
-        headers = {"Authorization": f"Bearer {self.hf_token}"}
-        
-        with open(image_path, "rb") as f:
-            img_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-        queries = {
-            "vendor": "What is the name of the store or merchant?",
-            "total": "What is the total amount or grand total?",
-            "date": "What is the date of the transaction?",
+        # donut-base-finetuned-cord-v2 is receipt-specific, still on HF Inference API
+        model_id = "naver-clova-ix/donut-base-finetuned-cord-v2"
+        url = f"https://api-inference.huggingface.co/models/{model_id}"
+        headers = {
+            "Authorization": f"Bearer {self.hf_token}",
+            "Content-Type": "application/octet-stream"  # raw bytes, not JSON
         }
-        
-        results = {}
+
         try:
-            for key, question in queries.items():
-                payload = {
-                    "inputs": {
-                        "image": img_base64,
-                        "question": question
-                    }
-                }
-                response = requests.post(url, headers=headers, json=payload, timeout=20)
-                if response.status_code == 200:
-                    data = response.json()
-                    if isinstance(data, list) and len(data) > 0:
-                        results[key] = data[0].get("answer")
-                else:
-                    print(f"HF API returned {response.status_code} for query '{key}': {response.text}")
-            
-            return results
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+
+            response = requests.post(url, headers=headers, data=image_bytes, timeout=30)
+
+            if response.status_code != 200:
+                print(f"HF Donut returned {response.status_code}: {response.text}")
+                return {}
+
+            data = response.json()
+
+            # Donut returns: [{"generated_text": "<s_menu>...</s_menu><s_total>...</s_total>..."}]
+            # or a nested dict depending on version — handle both
+            raw_output = ""
+            if isinstance(data, list) and len(data) > 0:
+                raw_output = data[0].get("generated_text", "")
+            elif isinstance(data, dict):
+                raw_output = data.get("generated_text", "")
+
+            if not raw_output:
+                print("HF Donut: empty response")
+                return {}
+
+            return self._parse_donut_output(raw_output)
+
         except Exception as e:
-            print(f"HF Document QA exception: {e}")
+            print(f"HF Donut exception: {e}")
             return {}
+
+    def _parse_donut_output(self, raw_output: str) -> dict:
+        import re
+
+        def extract_tag(tag: str) -> str:
+            match = re.search(rf"<{tag}>(.*?)</{tag}>", raw_output)
+            return match.group(1).strip() if match else ""
+
+        vendor = extract_tag("s_store_name") or extract_tag("s_nm")
+        total_str = extract_tag("s_total_price") or extract_tag("s_price")
+        date_str = extract_tag("s_date")
+
+        # Parse line items
+        line_items = []
+        items = re.findall(r"<s_menu>(.*?)</s_menu>", raw_output, re.DOTALL)
+        for item in items:
+            name = re.search(r"<s_nm>(.*?)</s_nm>", item)
+            price = re.search(r"<s_price>(.*?)</s_price>", item)
+            if name:
+                try:
+                    price_val = float(price.group(1).replace(",", "")) if price else 0.0
+                    line_items.append({"name": name.group(1).strip(), "price": price_val})
+                except ValueError:
+                    continue
+
+        try:
+            total = float(total_str.replace(",", "")) if total_str else None
+        except ValueError:
+            total = None
+
+        return {
+            "vendor": vendor or None,
+            "total": total,
+            "date": date_str or None,
+            "line_items": line_items,
+            "raw_text": raw_output,
+        }
 
     def _format_extraction_payload(self, payload: dict) -> dict:
         raw_items = payload.get("line_items") or []
