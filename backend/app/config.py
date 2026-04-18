@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     chroma_dir: Path = DATA_DIR / "chroma"
     chroma_collection: str = "finsight-transactions"
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    google_gemini_model: str = "gemini-1.5-flash"
+    google_gemini_model: str = "gemini-2.0-flash"
     layoutlm_model_name: str | None = None
     gemini_api_key: str | None = None
     supabase_url: str | None = None

@@ -197,20 +197,30 @@ class LlmService:
             return None
 
     def extract_receipt_image(self, image_path: str) -> dict | None:
-        if not self.available or not self.model or Image is None:
+        if not self.available or Image is None:
             print(f"Gemini skipped. Keys present? {bool(get_settings().gemini_api_key)}. GenAI imported? {genai is not None}. Pillow imported? {Image is not None}.")
             return None
-        try:
-            image = Image.open(Path(image_path))
-            response = self.model.generate_content([RECEIPT_IMAGE_PROMPT, image])
-            text = response.text.strip()
-            # Clean possible markdown fences
-            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
-            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
-            return json.loads(text)
-        except Exception as e:
-            print(f"Gemini image extraction failed: {e}")
-            return None
+            
+        models_to_try = [self.model_name, "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
+        
+        image = Image.open(Path(image_path))
+        
+        for model_alias in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_alias)
+                response = model.generate_content([RECEIPT_IMAGE_PROMPT, image])
+                text = response.text.strip()
+                # Clean possible markdown fences
+                text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+                text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+                print(f"Success with Gemini model: {model_alias}")
+                return json.loads(text)
+            except Exception as e:
+                print(f"Gemini model '{model_alias}' failed: {e}")
+                continue
+                
+        print("All Gemini fallback models failed.")
+        return None
 
     def generate_executive_report(self, metrics: dict) -> dict | None:
         if not self.available or not self.model:
