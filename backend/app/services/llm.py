@@ -197,7 +197,7 @@ class LlmService:
 
     def extract_receipt_image(self, image_path: str) -> dict | None:
         if not self.available or not self.model or Image is None:
-            print("Gemini image extraction skipped: model unavailable or Pillow missing.")
+            print(f"Gemini skipped. Keys present? {bool(get_settings().gemini_api_key)}. GenAI imported? {genai is not None}. Pillow imported? {Image is not None}.")
             return None
         try:
             image = Image.open(Path(image_path))

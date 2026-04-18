@@ -88,6 +88,7 @@ class ReceiptPipeline:
 
     def _extract_with_huggingface(self, image_path: str) -> dict:
         if not self.hf_token:
+            print("HF Document QA skipped: HF_API_TOKEN is not set.")
             return {}
         
         # Using a Document-QA model which is better at structured extraction than raw OCR
