@@ -16,7 +16,8 @@ except ImportError:  # pragma: no cover
 
 try:
     from PIL import Image
-except ImportError:  # pragma: no cover
+except ImportError as e:  # pragma: no cover
+    print(f"Failed to import Pillow: {e}")
     Image = None
 
 
