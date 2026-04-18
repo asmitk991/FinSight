@@ -197,6 +197,7 @@ class LlmService:
 
     def extract_receipt_image(self, image_path: str) -> dict | None:
         if not self.available or not self.model or Image is None:
+            print("Gemini image extraction skipped: model unavailable or Pillow missing.")
             return None
         try:
             image = Image.open(Path(image_path))
@@ -206,7 +207,8 @@ class LlmService:
             text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
             text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
             return json.loads(text)
-        except Exception:
+        except Exception as e:
+            print(f"Gemini image extraction failed: {e}")
             return None
 
     def generate_executive_report(self, metrics: dict) -> dict | None:

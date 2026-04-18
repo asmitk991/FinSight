@@ -120,7 +120,8 @@ class ReceiptPipeline:
                         results[key] = data[0].get("answer")
             
             return results
-        except Exception:
+        except Exception as e:
+            print(f"HF Document QA exception: {e}")
             return {}
 
     def _format_extraction_payload(self, payload: dict) -> dict:
