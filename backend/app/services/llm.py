@@ -123,13 +123,16 @@ Rules:
 class LlmService:
     def __init__(self) -> None:
         settings = get_settings()
-        self.model_name = settings.google_gemini_model
         self.available = bool(settings.gemini_api_key and genai)
         if self.available:
             genai.configure(api_key=settings.gemini_api_key)
-            self.model = genai.GenerativeModel(self.model_name)
+            # Use 2.5-flash-lite for all generic text/PDF operations (cheapest, high quota)
+            self.model = genai.GenerativeModel("gemini-2.5-flash-lite")
+            # Use 2.5-flash specifically for Vision OCR
+            self.vision_model = genai.GenerativeModel("gemini-2.5-flash")
         else:
             self.model = None
+            self.vision_model = None
 
     def parse_pdf_rows(self, raw_rows: list[str]) -> list[ParsedTransaction]:
         if self.available and self.model:
@@ -201,26 +204,18 @@ class LlmService:
             print(f"Gemini skipped. Keys present? {bool(get_settings().gemini_api_key)}. GenAI imported? {genai is not None}. Pillow imported? {Image is not None}.")
             return None
             
-        models_to_try = [self.model_name, "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"]
-        
-        image = Image.open(Path(image_path))
-        
-        for model_alias in models_to_try:
-            try:
-                model = genai.GenerativeModel(model_alias)
-                response = model.generate_content([RECEIPT_IMAGE_PROMPT, image])
-                text = response.text.strip()
-                # Clean possible markdown fences
-                text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
-                text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
-                print(f"Success with Gemini model: {model_alias}")
-                return json.loads(text)
-            except Exception as e:
-                print(f"Gemini model '{model_alias}' failed: {e}")
-                continue
-                
-        print("All Gemini fallback models failed.")
-        return None
+        try:
+            image = Image.open(Path(image_path))
+            response = self.vision_model.generate_content([RECEIPT_IMAGE_PROMPT, image])
+            text = response.text.strip()
+            # Clean possible markdown fences
+            text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+            text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+            print("Success with Gemini model: gemini-2.5-flash")
+            return json.loads(text)
+        except Exception as e:
+            print(f"Gemini vision model failed: {e}")
+            return None
 
     def generate_executive_report(self, metrics: dict) -> dict | None:
         if not self.available or not self.model:
