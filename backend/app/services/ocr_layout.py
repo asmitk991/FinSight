@@ -119,6 +119,8 @@ class ReceiptPipeline:
                     data = response.json()
                     if isinstance(data, list) and len(data) > 0:
                         results[key] = data[0].get("answer")
+                else:
+                    print(f"HF API returned {response.status_code} for query '{key}': {response.text}")
             
             return results
         except Exception as e:
