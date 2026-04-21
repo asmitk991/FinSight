@@ -233,6 +233,7 @@ export default function App() {
   });
   const b = (k, v) => setBusy(p => ({ ...p, [k]: v }));
 
+
   /* ── Auth ── */
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -622,12 +623,6 @@ export default function App() {
                       }} />
                     </label>
 
-                    {/* Images */}
-                    <label className="upload-tile">
-                      <span className="upload-tile-icon">🖼</span>
-                      <span className="upload-tile-title">Upload receipts</span>
-                      <span className="upload-tile-sub">JPG / PNG receipt images</span>
-                      <input type="file" accept="image/*" multiple onChange={handleImageUpload} />
                     </label>
                   </div>
 

@@ -37,6 +37,21 @@ class SupabaseStore:
         response = query.order("date", desc=True).execute()
         return response.data
 
+    def match_transactions(self, user_id: str, query_embedding: list[float], match_threshold: float = 0.70, match_count: int = 15) -> list[dict]:
+        if not self.client:
+            return []
+        
+        response = self.client.rpc(
+            'match_transactions',
+            {
+                'query_embedding': query_embedding,
+                'match_threshold': match_threshold,
+                'match_count': match_count,
+                'p_user_id': user_id
+            }
+        ).execute()
+        return response.data
+
     def save_many(self, transactions: list[TransactionRecord]) -> list[dict]:
         if not self.client or not transactions:
             return []

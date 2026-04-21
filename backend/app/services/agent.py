@@ -50,14 +50,29 @@ class FinanceAgentService:
         end_date: date | None = None,
         category: str | None = None,
     ) -> AgentQueryResponse:
-        transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date, category=None)
-        plan = self._build_plan(question, transactions, top_k=top_k, explicit_category=category)
-        filtered = self._apply_plan(transactions, plan)
+        # 1. Semantic Search (RAG) via pgvector
+        question_vector = self.llm.generate_embedding(question)
+        filtered = []
+        
+        if question_vector:
+            filtered = self.transactions.match_transactions(user_id, question_vector, match_threshold=0.60, match_count=max(top_k, 15))
+            
+        # 2. Fallback to general logic if RAG yields no results (e.g. no vectors created yet)
+        if not filtered:
+            transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date, category=None)
+            plan = self._build_plan(question, transactions, top_k=top_k, explicit_category=category)
+            filtered = self._apply_plan(transactions, plan)
+            metrics = self._build_metrics(filtered)
+            needs_clarification = self._needs_clarification(plan, question, filtered)
+            answer = self._format_answer(question, plan, filtered, metrics)
+            supporting = [] if needs_clarification else self._select_supporting(plan, filtered)
+            return AgentQueryResponse(answer=answer, supporting_transactions=supporting, metrics=metrics)
+            
+        # 3. Augmented Generation
         metrics = self._build_metrics(filtered)
-        needs_clarification = self._needs_clarification(plan, question, filtered)
-        answer = self._format_answer(question, plan, filtered, metrics)
-        supporting = [] if needs_clarification else self._select_supporting(plan, filtered)
-        return AgentQueryResponse(answer=answer, supporting_transactions=supporting, metrics=metrics)
+        answer = self.llm.generate_agent_response(question, metrics)
+        
+        return AgentQueryResponse(answer=answer, supporting_transactions=filtered[:top_k], metrics=metrics)
 
     def report(self, user_id: str, start_date: date, end_date: date):
         transactions = self.transactions.list_transactions(user_id, start_date=start_date, end_date=end_date)

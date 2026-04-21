@@ -8,12 +8,14 @@ from app.services.category import build_embedding_text, infer_currency_from_text
 from app.services.merchant_resolver import MerchantResolver
 from app.services.ocr_layout import ReceiptPipeline
 from app.services.supabase_store import SupabaseStore
+from app.services.llm import LlmService
 
 
 class TransactionRepository:
     def __init__(self) -> None:
         self.store = SupabaseStore()
         self.merchant_resolver = MerchantResolver()
+        self.llm_service = LlmService()
 
     def list_transactions(
         self,
@@ -30,6 +32,10 @@ class TransactionRepository:
             "source": source,
         }
         rows = self.store.list_transactions(user_id, filters)
+        return [TransactionRecord.model_validate(row) for row in rows]
+    
+    def match_transactions(self, user_id: str, query_embedding: list[float], match_threshold: float = 0.70, match_count: int = 15) -> list[TransactionRecord]:
+        rows = self.store.match_transactions(user_id, query_embedding, match_threshold, match_count)
         return [TransactionRecord.model_validate(row) for row in rows]
 
     def get(self, user_id: str, transaction_id: str) -> TransactionRecord | None:
@@ -91,6 +97,8 @@ class TransactionRepository:
             currency,
         )
 
+        vector_embedding = self.llm_service.generate_embedding(embedding_text)
+
         return tx.model_copy(
             update={
                 "merchant": merchant,
@@ -98,6 +106,7 @@ class TransactionRepository:
                 "currency": currency,
                 "line_items": line_items,
                 "embedding_text": embedding_text,
+                "embedding": vector_embedding if vector_embedding else None,
                 "user_id": user_id,
             }
         )

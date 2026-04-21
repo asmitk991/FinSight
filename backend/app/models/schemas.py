@@ -62,6 +62,7 @@ class TransactionBase(BaseModel):
     line_items: list[LineItem] = Field(default_factory=list)
     raw_text: str
     embedding_text: str
+    embedding: list[float] | None = None
     user_id: str | None = None
 
 

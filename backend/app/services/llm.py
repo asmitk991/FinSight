@@ -134,6 +134,20 @@ class LlmService:
             self.model = None
             self.vision_model = None
 
+    def generate_embedding(self, text: str) -> list[float]:
+        if not self.available:
+            return []
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=text,
+                task_type="retrieval_document",
+            )
+            return result.get("embedding", [])
+        except Exception as e:
+            print(f"Error generating embedding: {e}")
+            return []
+
     def parse_pdf_rows(self, raw_rows: list[str]) -> list[ParsedTransaction]:
         if self.available and self.model:
             response = self.model.generate_content([PDF_PROMPT, "\n".join(raw_rows)])
