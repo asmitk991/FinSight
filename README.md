@@ -1,52 +1,78 @@
-# 📊 FinSight: Personal Financial Intelligence
+# 📊 FinSight: Personal Financial Intelligence (RAG)
 
-FinSight is a professional-grade personal finance analyzer that transforms messy bank statements and crumpled receipts into actionable behavioral insights. Powered by Gemini 1.5 Flash and a robust async processing pipeline, it gives you a "Chat GPT" for your own money.
+FinSight is a high-performance financial intelligence platform that transforms messy bank statements into actionable behavioral insights. Built with a **Retrieval-Augmented Generation (RAG)** architecture using **Supabase pgvector**, it provides a "Chat GPT" interface for your personal finances.
 
 ![FinSight Dashboard](https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=1000)
 
 ## 🚀 Key Features
 
-*   **⚡ Smart Ingestion**: Upload Google Pay or UPI PDF statements. The system automatically extracts merchants, amounts, and dates using intelligent pattern matching and LLM refinement.
-*   **📸 Receipt OCR**: Upload images of paper receipts. A background worker (Celery + PaddleOCR) processes the image, extracts line items, and categorizes the spend.
-*   **🤖 AI Finance Assistant**: Ask questions like *"How much did I spend on food in January?"* or *"Compare my weekend spending vs weekdays"*.
-*   **🧠 Behavioral Insights**: Generates an "Executive Report" that identifies spending habits, impulse signals, and provides a "Financial Health Score."
-*   **🔍 Merchant Resolution**: Automatically pulls canonical business names and categories (e.g., "ZOMATO" -> "Food & Dining").
+*   **🧠 RAG Architecture**: Native semantic search powered by **Supabase pgvector**. The AI agent semantically retrieves relevant transaction context to answer complex natural language queries with high precision.
+*   **⚡ Smart Ingestion**: Upload bank statement PDFs. The system automatically extracts merchant details, amounts, and dates using **Gemini 1.5 Flash** for intelligent pattern refinement.
+*   **🤖 AI Finance Assistant**: Ask anything: *"How much did I spend on food in March?"*, *"Compare my weekend vs weekday spending patterns"*, or *"Analyze my impulse purchases."*
+*   **📈 Executive Reports**: Generates deep-dive financial health reports, identifying behavioral trends, spending signals, and personalized recommendations.
+*   **🔒 Secure & Private**: Integrated with **Supabase Auth** and Row-Level Security (RLS) to ensure your data stays private and isolated.
 
 ## 🛠 Tech Stack
 
-*   **Frontend**: React + Vite, Tailwind-inspired custom CSS, Lucide Icons.
-*   **Backend**: FastAPI (Python 3.11).
-*   **AI/ML**: Google Gemini 1.5 Flash, LayoutLMv3, PaddleOCR.
-*   **Storage**: Local JSON Persistence & ChromaDB Vector Store.
-*   **Async Processing**: Celery + Redis.
-*   **DevOps**: Docker & Docker Compose.
+*   **Frontend**: React, Vite, Custom Modern CSS (Glassmorphism), Recharts.
+*   **Backend**: FastAPI (Python), Google Gemini AI (Flash 2.5), Celery, Redis.
+*   **Database**: Supabase (PostgreSQL + **pgvector**).
+*   **DevOps**: Docker, Docker Compose, Render (Production).
 
 ---
 
-## 🚦 Quick Start (Docker)
+## 🚦 Local Setup
 
-The easiest way to run FinSight is using Docker Compose.
+### **1. Clone & Install**
+```bash
+git clone https://github.com/asmitk991/FinSight.git
+cd FinSight
+```
 
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/asmitk991/FinSight.git
-    cd FinSight
-    ```
+### **2. Environment Configuration**
+Create a `.env` file in the `backend/` directory:
+```env
+GEMINI_API_KEY=your_gemini_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+REDIS_URL=redis://localhost:6379/0
+```
 
-2.  **Set up Environment Variables**:
-    Create a `.env` file in the root directory:
-    ```bash
-    GEMINI_API_KEY=your_google_gemini_api_key_here
-    ```
+### **3. Database Setup (Supabase)**
+Run the following SQL in your Supabase SQL Editor to enable vector search:
+```sql
+create extension if not exists vector;
+alter table transactions add column embedding vector(768);
 
-3.  **Launch the App**:
-    ```bash
-    docker-compose up --build
-    ```
+-- Create the RAG search function
+create or replace function match_transactions (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  p_user_id uuid
+)
+returns setof transactions
+language sql
+as $$
+  select * from transactions
+  where user_id = p_user_id and embedding <=> query_embedding < 1 - match_threshold
+  order by embedding <=> query_embedding limit match_count;
+$$;
+```
 
-4.  **Access the Dashboard**:
-    *   **Frontend**: [http://localhost](http://localhost)
-    *   **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+### **4. Launch Services**
+You can run via Docker Compose or manually:
+
+**Docker Compose:**
+```bash
+docker-compose up --build
+```
+
+**Manual (FastAPI + Worker + Frontend):**
+1. **Backend:** `cd backend && uvicorn app.main:app --reload`
+2. **Worker:** `cd backend && celery -A app.celery_app worker --loglevel=info`
+3. **Frontend:** `cd frontend && npm install && npm run dev`
 
 ---
 
@@ -54,29 +80,20 @@ The easiest way to run FinSight is using Docker Compose.
 
 ```text
 ├── backend/
-│   ├── app/              # FastAPI Application Logic
-│   ├── data/             # Persistent JSON & Ledger Data
-│   ├── Dockerfile        # Backend Production Image
+│   ├── app/              # FastAPI Application Logic & RAG Services
+│   ├── tests/            # Test scripts for RAG and API
+│   ├── Dockerfile        # Production API image
 │   └── requirements.txt  # Python Dependencies
 ├── frontend/
-│   ├── src/              # React Components & Dashboard
-│   └── Dockerfile        # Nginx-based Frontend Image
-└── docker-compose.yml    # Full-stack Orchestration
+│   ├── src/              # React components & Modern Dashboard
+│   └── Dockerfile        # Production Frontend image
+└── docker-compose.yml    # Full-stack orchestration
 ```
 
 ## 🔒 Privacy & Security
 
-*   **Local-First**: All your transaction data is stored locally on your machine in the `backend/data` folder.
-*   **Secure History**: This repository has been scrubbed of all personal test data and API keys.
-*   **Ignored Files**: Sensitive files like `.env` and `transactions.json` are automatically ignored by Git.
+*   **User Isolation**: Every user has a unique UUID; RLS policies prevent unauthorized data access.
+*   **Secret Management**: Sensitive keys are handled via environment variables and are never committed to version control.
+*   **RAG Precision**: Only relevant transaction snippets are shared with the LLM via semantic retrieval.
 
----
-
-## 📈 Future Roadmap
-
-- [ ] Support for multi-user authentication (JWT).
-- [ ] Direct bank API integrations (Plaid/Salt Edge).
-- [ ] Export to PDF/Excel spending reports.
-- [ ] Mobile-native application.
-
-Made with ❤️ for better financial clarity.
+Made with ❤️ by [Asmit Kumar](https://github.com/asmitk991)
