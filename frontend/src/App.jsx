@@ -214,7 +214,6 @@ export default function App() {
   const [execReport, setExecReport]   = useState(null);
   const [preview, setPreview]         = useState(null);
   const [agentReply, setAgentReply]   = useState(null);
-  const [imageJob, setImageJob]       = useState(null);
 
   // UI state
   const [question, setQuestion]       = useState("");
@@ -226,9 +225,8 @@ export default function App() {
   const [showAll, setShowAll]         = useState(false);
   const [activeChart, setActiveChart] = useState(null);
 
-  // Loading flags
   const [busy, setBusy] = useState({
-    pdf: false, saving: false, images: false,
+    pdf: false, saving: false,
     agent: false, report: false, clear: false, deleting: null,
   });
   const b = (k, v) => setBusy(p => ({ ...p, [k]: v }));
@@ -241,7 +239,7 @@ export default function App() {
       setSession(s);
       if (!s) {
         setTx([]); setReport(null); setExecReport(null);
-        setPreview(null); setAgentReply(null); setImageJob(null);
+        setPreview(null); setAgentReply(null);
         setQuestion(""); setUploadMsg(""); setUploadErr("");
         setAgentErr(""); setReportErr(""); setSelectedPdf(null);
       }
@@ -284,30 +282,7 @@ export default function App() {
     } finally { b("pdf", false); }
   }
 
-  async function handleImageUpload(e) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    try {
-      setUploadErr(""); b("images", true);
-      setUploadMsg(`Queued ${files.length} image(s) for OCR…`);
-      const job = await uploadImages(files);
-      setImageJob(job);
-      const iv = setInterval(async () => {
-        const u = await pollImageJob(job.job_id);
-        setImageJob(u);
-        if (u.status === "completed" || u.status === "failed") {
-          clearInterval(iv); b("images", false); refresh();
-          setUploadMsg(u.status === "completed"
-            ? `Receipt processing complete.`
-            : `Processing failed: ${u.error ?? "unknown error"}`);
-        }
-      }, 2000);
-    } catch (err) {
-      const detail = err?.response?.data?.detail;
-      setUploadErr(typeof detail === "string" ? detail : "Image processing failed.");
-      b("images", false);
-    }
-  }
+
 
   async function savePreview() {
     try {
@@ -622,8 +597,6 @@ export default function App() {
                         setUploadErr("");
                       }} />
                     </label>
-
-                    </label>
                   </div>
 
                   {selectedPdf && (
@@ -636,14 +609,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {imageJob && (
-                    <div style={{ marginTop: 14 }}>
-                      <StatusMsg
-                        msg={`Image job ${imageJob.status}${imageJob.status === "failed" ? ": " + imageJob.error : ""}`}
-                        type={imageJob.status === "completed" ? "success" : imageJob.status === "failed" ? "error" : "info"}
-                      />
-                    </div>
-                  )}
+
                 </div>
               </div>
 
